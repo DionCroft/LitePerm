@@ -1,0 +1,92 @@
+materials:
+  air:
+    display_name: Air
+    category: gas
+    epsilon_real: 1.0006
+    epsilon_imag: 0.0
+    loss_tangent: 0.0
+    conductivity_s_per_m: 0.0
+    reference_frequency_ghz: 2.45
+    temperature_c: 25
+    notes: Approximate ambient-air reference used as a low-loss baseline.
+  water:
+    display_name: Water
+    category: liquid
+    epsilon_real: 78.3
+    epsilon_imag: 9.5
+    loss_tangent: 0.121
+    conductivity_s_per_m: 1.29
+    reference_frequency_ghz: 2.45
+    temperature_c: 25
+    notes: Representative room-temperature deionised water values.
+  methanol:
+    display_name: Methanol
+    category: liquid
+    epsilon_real: 32.6
+    epsilon_imag: 6.7
+    loss_tangent: 0.205
+    conductivity_s_per_m: 0.91
+    reference_frequency_ghz: 2.45
+    temperature_c: 25
+    notes: Useful as a polar-liquid calibration reference.
+  ethanol:
+    display_name: Ethanol
+    category: liquid
+    epsilon_real: 24.5
+    epsilon_imag: 3.2
+    loss_tangent: 0.131
+    conductivity_s_per_m: 0.44
+    reference_frequency_ghz: 2.45
+    temperature_c: 25
+    notes: Typical anhydrous ethanol approximation.
+  acetone:
+    display_name: Acetone
+    category: liquid
+    epsilon_real: 20.7
+    epsilon_imag: 1.4
+    loss_tangent: 0.068
+    conductivity_s_per_m: 0.19
+    reference_frequency_ghz: 2.45
+    temperature_c: 25
+    notes: Low-loss solvent reference for comparative sensing.
+  nacl_solution:
+    display_name: NaCl Solution
+    category: liquid
+    epsilon_real: 74.0
+    epsilon_imag: 17.5
+    loss_tangent: 0.237
+    conductivity_s_per_m: 2.37
+    reference_frequency_ghz: 2.45
+    temperature_c: 25
+    notes: Representative saline reference for biomedical sensing studies.
+  fr4:
+    display_name: FR4
+    category: laminate
+    epsilon_real: 4.3
+    epsilon_imag: 0.086
+    loss_tangent: 0.02
+    conductivity_s_per_m: 0.0117
+    reference_frequency_ghz: 2.45
+    temperature_c: 25
+    notes: Generic FR4 PCB laminate reference.
+  ptfe:
+    display_name: PTFE
+    category: polymer
+    epsilon_real: 2.1
+    epsilon_imag: 0.00042
+    loss_tangent: 0.0002
+    conductivity_s_per_m: 0.000057
+    reference_frequency_ghz: 2.45
+    temperature_c: 25
+    notes: Low-loss benchmark dielectric.
+  rogers_5880:
+    display_name: Rogers 5880
+    category: laminate
+    epsilon_real: 2.2
+    epsilon_imag: 0.00198
+    loss_tangent: 0.0009
+    conductivity_s_per_m: 0.000269
+    reference_frequency_ghz: 2.45
+    temperature_c: 25
+    notes: Common microwave substrate reference.
+
