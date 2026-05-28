@@ -59,6 +59,26 @@ materials:
     reference_frequency_ghz: 2.45
     temperature_c: 25
     notes: Representative saline reference for biomedical sensing studies.
+  saline:
+    display_name: Saline
+    category: liquid
+    epsilon_real: 76.0
+    epsilon_imag: 15.0
+    loss_tangent: 0.197
+    conductivity_s_per_m: 2.03
+    reference_frequency_ghz: 2.45
+    temperature_c: 25
+    notes: Representative saline solution reference for RF biomedical studies.
+  nacl_solutions:
+    display_name: NaCl Solutions
+    category: liquid
+    epsilon_real: 72.0
+    epsilon_imag: 19.0
+    loss_tangent: 0.264
+    conductivity_s_per_m: 2.57
+    reference_frequency_ghz: 2.45
+    temperature_c: 25
+    notes: Generalised NaCl solution family entry for concentration-comparison workflows.
   fr4:
     display_name: FR4
     category: laminate
@@ -89,4 +109,3 @@ materials:
     reference_frequency_ghz: 2.45
     temperature_c: 25
     notes: Common microwave substrate reference.
-

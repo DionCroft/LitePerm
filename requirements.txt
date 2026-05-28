@@ -6,7 +6,11 @@ plotly>=6.0
 scikit-rf>=1.8
 matplotlib>=3.9
 PyYAML>=6.0
+fastapi>=0.116
+uvicorn>=0.35
+pyserial>=3.5
 kaleido>=0.2
 pytest>=8.3
 pytest-cov>=6.0
+ruff>=0.12
 

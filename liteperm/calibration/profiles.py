@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from liteperm.models.core import CalibrationProfile
+from liteperm.utils.paths import CALIBRATION_LIBRARY_ROOT, ensure_runtime_directories
 from liteperm.utils.yaml_io import dump_yaml, load_yaml, write_yaml
 
 
@@ -58,3 +59,16 @@ def load_calibration_profile(path: str | Path) -> CalibrationProfile:
 def calibration_profile_to_yaml(profile: CalibrationProfile) -> str:
     return dump_yaml(profile.to_dict())
 
+
+def save_calibration_profile_to_library(profile: CalibrationProfile) -> Path:
+    ensure_runtime_directories()
+    destination = CALIBRATION_LIBRARY_ROOT / f"{profile.name.replace(' ', '_').lower()}.yaml"
+    return save_calibration_profile(destination, profile)
+
+
+def list_saved_calibration_profiles() -> list[dict[str, str]]:
+    ensure_runtime_directories()
+    profiles = []
+    for path in sorted(CALIBRATION_LIBRARY_ROOT.glob("*.yaml")):
+        profiles.append({"name": path.stem, "path": str(path)})
+    return profiles

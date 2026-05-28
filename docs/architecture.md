@@ -2,14 +2,17 @@
 
 ```mermaid
 flowchart LR
-    A[Touchstone / CSV Import] --> B[S11 Measurement Model]
-    B --> C[Optional OSL Calibration]
-    C --> D[Gamma to Impedance]
-    D --> E[Impedance to Admittance]
-    E --> F[Permittivity Method Registry]
-    F --> G[Dielectric Spectrum]
-    G --> H[Plotly Dashboard]
-    G --> I[CSV / PNG / SVG Export]
-    G --> J[Future ML Interfaces]
+    A[LiteVNA Device or File Import] --> B[Raw Measurement]
+    B --> C[Calibration Engine]
+    C --> D[Network Transform]
+    D --> E[Transformation Plugin]
+    E --> F[Dielectric Spectrum]
+    F --> G[Plotly Dashboard]
+    F --> H[SQLite Experiment Store]
+    F --> I[Project Archive]
+    F --> J[Reporting]
+    H --> K[Experiment Explorer]
+    H --> L[AI Dataset Builder]
+    H --> M[FastAPI Service]
 ```
 

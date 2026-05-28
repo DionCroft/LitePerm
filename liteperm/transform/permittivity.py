@@ -4,12 +4,13 @@ from __future__ import annotations
 
 from liteperm.calibration.one_port import apply_one_port_calibration
 from liteperm.models.core import CalibrationProfile, MaterialSpectrum, MeasurementData, SensorGeometryProfile
-from liteperm.models.permittivity_methods import METHOD_REGISTRY
+from liteperm.plugins.base import TransformationContext
+from liteperm.plugins.manager import get_plugin, get_runnable_plugins
 from liteperm.transform.network import gamma_to_admittance, gamma_to_impedance
 
 
 def available_methods() -> list[str]:
-    return list(METHOD_REGISTRY)
+    return list(get_runnable_plugins())
 
 
 def compute_material_spectrum(
@@ -22,9 +23,9 @@ def compute_material_spectrum(
     short_measurement: MeasurementData | None = None,
     load_measurement: MeasurementData | None = None,
 ) -> tuple[MaterialSpectrum, MeasurementData]:
-    method_key = method.lower()
-    if method_key not in METHOD_REGISTRY:
-        raise KeyError(f"Unsupported permittivity method: {method}")
+    plugin = get_plugin(method)
+    if not plugin.metadata().get("implemented", True):
+        raise NotImplementedError(f"Plugin `{method}` is registered but not yet implemented.")
 
     working_measurement = measurement
     if calibration_profile and open_measurement and short_measurement and load_measurement:
@@ -40,12 +41,16 @@ def compute_material_spectrum(
 
     impedance = gamma_to_impedance(working_measurement.s11, z0=working_measurement.z0)
     admittance = gamma_to_admittance(working_measurement.s11, z0=working_measurement.z0)
-    spectrum = METHOD_REGISTRY[method_key].estimate(
-        frequency_hz=working_measurement.frequency_hz,
+    context = TransformationContext(
+        measurement=working_measurement,
+        geometry=geometry,
         gamma=working_measurement.s11,
         impedance=impedance,
         admittance=admittance,
-        geometry=geometry,
+        calibration_profile=calibration_profile,
     )
+    validation_issues = plugin.validate(context)
+    spectrum = plugin.calculate(context)
+    if validation_issues:
+        spectrum.metadata = {**spectrum.metadata, "validation_issues": validation_issues}
     return spectrum, working_measurement
-

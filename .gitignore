@@ -12,4 +12,11 @@ build/
 *.pyd
 .DS_Store
 .streamlit/secrets.toml
-
+Projects/*
+!Projects/.gitkeep
+profiles/calibrations/*.yaml
+!profiles/calibrations/.gitkeep
+profiles/geometries/*.yaml
+!profiles/geometries/.gitkeep
+liteperm/database/*.db-shm
+liteperm/database/*.db-wal

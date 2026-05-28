@@ -2,11 +2,15 @@
 
 from __future__ import annotations
 
-import matplotlib.pyplot as plt
+import matplotlib
 import numpy as np
 import plotly.graph_objects as go
 
 from liteperm.models.core import MaterialSpectrum, MeasurementData
+
+
+matplotlib.use("Agg")
+import matplotlib.pyplot as plt
 
 
 def _frequency_axis(frequency_hz: np.ndarray) -> np.ndarray:
@@ -138,3 +142,16 @@ def build_static_spectrum_preview(spectrum: MaterialSpectrum) -> plt.Figure:
     figure.tight_layout()
     return figure
 
+
+def build_static_measurement_preview(measurement: MeasurementData) -> plt.Figure:
+    frequency_axis = _frequency_axis(measurement.frequency_hz)
+    figure, axes = plt.subplots(2, 1, figsize=(8, 6), sharex=True)
+    axes[0].plot(frequency_axis, measurement.magnitude_db, label="|S11| (dB)")
+    axes[0].set_ylabel("Magnitude (dB)")
+    axes[0].grid(True, alpha=0.25)
+    axes[1].plot(frequency_axis, measurement.phase_deg, label="Phase", color="tab:orange")
+    axes[1].set_xlabel("Frequency (GHz)")
+    axes[1].set_ylabel("Phase (deg)")
+    axes[1].grid(True, alpha=0.25)
+    figure.tight_layout()
+    return figure

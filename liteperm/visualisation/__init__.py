@@ -9,6 +9,7 @@ from liteperm.visualisation.plots import (
     build_nyquist_plot,
     build_phase_plot,
     build_smith_chart,
+    build_static_measurement_preview,
     build_static_spectrum_preview,
 )
 
@@ -21,6 +22,6 @@ __all__ = [
     "build_nyquist_plot",
     "build_phase_plot",
     "build_smith_chart",
+    "build_static_measurement_preview",
     "build_static_spectrum_preview",
 ]
-
