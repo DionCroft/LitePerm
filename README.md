@@ -29,6 +29,29 @@ The project originated from the need for an accessible and extensible framework 
 
 Unlike traditional VNA software, LitePerm is designed not only to visualise measurements but also to estimate unknown material properties through forward and inverse electromagnetic modelling.
 
+## Full-Wave Simulation
+
+LitePerm now includes a modular Phase 4 full-wave solver layer designed to support simulation-assisted RF sensing workflows without locking the project to a single external tool.
+
+Current Phase 4 support includes:
+
+* `liteperm/solvers` integration package
+* `SimulationJob` and `SimulationResult` models
+* Solver registry and environment checks
+* openEMS adapter scaffold
+* Meep adapter scaffold
+* Simulation caching under `Projects/<ProjectName>/simulations/`
+* Measured versus simulated S11 comparison
+* Full-wave forward-model support inside inverse modelling
+
+Key Phase 4 documentation:
+
+* `docs/full_wave_solver_guide.md`
+* `docs/openems_setup_guide.md`
+* `docs/meep_setup_guide.md`
+* `docs/simulation_workflow.md`
+* `CHANGELOG.md`
+
 ## Website and Documentation
 
 - GitHub Pages documentation portal: `https://dioncroft.github.io/LitePerm/`
@@ -697,11 +720,12 @@ Current dashboard includes:
 3. Calibration
 4. Sensor Geometry
 5. Material Properties
-6. Inverse Modelling
-7. Advanced Modelling
-8. Research Mode
-9. Experiment Explorer
-10. Material Database
+6. Full-Wave Simulation
+7. Inverse Modelling
+8. Advanced Modelling
+9. Research Mode
+10. Experiment Explorer
+11. Material Database
 
 ---
 
@@ -748,10 +772,15 @@ Inverse electromagnetic modelling.
 
 Full-wave solver integration.
 
-Planned:
+Implemented:
 
-* openEMS
-* Meep
+* openEMS adapter scaffold
+* Meep adapter scaffold
+* Solver registry
+* `SimulationJob` model
+* `SimulationResult` model
+* Simulation caching
+* Measured versus simulated comparison
 
 ## Phase 5
 

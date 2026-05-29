@@ -1,0 +1,57 @@
+# Example LitePerm simulation job for a microstrip resonator study.
+
+solver_name: meep
+sensor_type: microstrip_resonator
+geometry_profile:
+  name: Microstrip Resonator Demo
+  sensor_type: microstrip_resonator
+  parameters:
+    resonator_length_mm: 24.0
+    trace_width_mm: 3.0
+    substrate_height_mm: 1.6
+    substrate_permittivity: 2.2
+material_stack:
+  metadata:
+    sensor_type: microstrip_resonator
+  layers:
+    - name: air
+      material_name: Air
+      thickness_m: 0.001
+      epsilon_real: 1.0006
+      epsilon_imag: 0.0
+      conductivity_s_per_m: 0.0
+      loss_tangent: 0.0
+      role: air
+      mutable: false
+    - name: material_under_test
+      material_name: Ethanol Demo
+      thickness_m: 0.001
+      epsilon_real: 10.5
+      epsilon_imag: 1.6
+      conductivity_s_per_m: 0.04
+      loss_tangent: 0.15
+      role: material
+      mutable: true
+    - name: substrate
+      material_name: Rogers 5880
+      thickness_m: 0.0016
+      epsilon_real: 2.2
+      epsilon_imag: 0.00198
+      conductivity_s_per_m: 0.000269
+      loss_tangent: 0.0009
+      role: substrate
+      mutable: false
+sweep_start_frequency_hz: 1000000000.0
+sweep_stop_frequency_hz: 3500000000.0
+number_of_points: 301
+boundary_conditions:
+  x: PML
+  y: PML
+  z: PML
+mesh_settings:
+  quality: medium
+  resolution: 20
+excitation_settings:
+  source_type: gaussian
+notes: >
+  The current Meep adapter is a scaffold. Use this job as a documentation and workflow example rather than an end-to-end runnable solver case.

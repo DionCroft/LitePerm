@@ -80,6 +80,7 @@ def run_inverse_estimation(
     layer_stack: LayerStack,
     forward_model_key: str,
     solver_name: str,
+    forward_model_options: dict[str, Any] | None = None,
     parameter_names: list[str] | None = None,
     error_metric: str = "weighted_error",
     solver_options: dict[str, Any] | None = None,
@@ -88,7 +89,10 @@ def run_inverse_estimation(
     uncertainty_samples: int = 12,
 ) -> tuple[object, object, object]:
     calibration_profile = calibration_profile or build_calibration_profile("Default OSL")
-    model = build_forward_model(forward_model_key, geometry=geometry, layer_stack=layer_stack)
+    model_kwargs = {"geometry": geometry, "layer_stack": layer_stack}
+    if forward_model_options:
+        model_kwargs["metadata_overrides"] = forward_model_options
+    model = build_forward_model(forward_model_key, **model_kwargs)
     problem = build_inverse_problem(model, measurement, parameter_names=parameter_names, error_metric=error_metric, solver_options=solver_options)
     solver = build_inverse_solver(solver_name)
     result = solver.solve(model, problem)

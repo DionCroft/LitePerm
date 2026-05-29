@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.5.0
+
+- Added the Phase 4 full-wave solver integration layer
+- Added `liteperm/solvers` with solver adapters, registry, cache helpers, exporters, validators, and result models
+- Added `SimulationJob` and `SimulationResult` models for reproducible simulation workflows
+- Added the `Full-Wave Simulation` Streamlit tab with solver status, setup, result export, and measured-versus-simulated comparison
+- Added a `FullWaveForwardModel` path so inverse modelling can use analytical, cached, and solver-backed forward responses
+- Added openEMS adapter scaffolding, Meep adapter scaffolding, and example simulation job files
+- Added full-wave solver documentation, setup guides, and simulation workflow pages to the MkDocs site
+- Updated the README, roadmap, and release notes for the Phase 4 simulation-assisted workflow
+
 ## v0.4.0
 
 - Added a full MkDocs Material documentation portal for GitHub Pages

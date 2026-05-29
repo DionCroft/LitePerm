@@ -1,0 +1,58 @@
+# Placeholder LitePerm job for future OECP full-wave studies.
+
+solver_name: openems
+sensor_type: open_ended_coax_probe
+geometry_profile:
+  name: OECP Placeholder
+  sensor_type: open_ended_coax_probe
+  parameters:
+    inner_radius_mm: 0.45
+    outer_radius_mm: 1.5
+    flange_radius_mm: 4.5
+    cable_permittivity: 2.1
+material_stack:
+  metadata:
+    sensor_type: open_ended_coax_probe
+  layers:
+    - name: air
+      material_name: Air
+      thickness_m: 0.0005
+      epsilon_real: 1.0006
+      epsilon_imag: 0.0
+      conductivity_s_per_m: 0.0
+      loss_tangent: 0.0
+      role: air
+      mutable: false
+    - name: protective_layer
+      material_name: PTFE
+      thickness_m: 0.0001
+      epsilon_real: 2.1
+      epsilon_imag: 0.00042
+      conductivity_s_per_m: 0.0
+      loss_tangent: 0.0002
+      role: protective_layer
+      mutable: true
+    - name: material_under_test
+      material_name: Unknown Liquid
+      thickness_m: 0.002
+      epsilon_real: 18.0
+      epsilon_imag: 1.4
+      conductivity_s_per_m: 0.15
+      loss_tangent: 0.08
+      role: material
+      mutable: true
+sweep_start_frequency_hz: 500000000.0
+sweep_stop_frequency_hz: 6000000000.0
+number_of_points: 801
+boundary_conditions:
+  x: PML
+  y: PML
+  z: PML
+mesh_settings:
+  quality: coarse
+  cells_per_wavelength: 12
+excitation_settings:
+  output_power: 0
+  port: coax_probe
+notes: >
+  Placeholder example for future higher-fidelity OECP solver work.

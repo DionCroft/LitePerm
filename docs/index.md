@@ -18,7 +18,7 @@
     </div>
   </div>
   <div class="lp-kpi-grid">
-    <div class="lp-kpi-card"><strong>Phase 4</strong><span>GitHub Pages portal and browser demo</span></div>
+    <div class="lp-kpi-card"><strong>Phase 4</strong><span>Full-wave solver integration, cache, and comparison workflows</span></div>
     <div class="lp-kpi-card"><strong>LiteVNA-ready</strong><span>Touchstone, CSV, and USB serial workflows</span></div>
     <div class="lp-kpi-card"><strong>Inverse engine</strong><span>Forward models, solvers, uncertainty, sensitivity</span></div>
     <div class="lp-kpi-card"><strong>Research archive</strong><span>SQLite experiments, reports, metadata, YAML profiles</span></div>
@@ -112,13 +112,14 @@ If you want the fastest path to a first result, follow the [Quick Start guide](Q
 | Import | Touchstone `.s1p`, CSV, LiteVNA live acquisition |
 | Analysis | S11, phase, Smith chart, impedance, admittance, permittivity |
 | Modelling | Stuchly-style transforms, forward models, inverse solvers |
+| Simulation | openEMS adapter path, Meep scaffold, simulation cache, measured-vs-simulated overlays |
 | Storage | SQLite experiment database plus project archive folders |
 | Web | GitHub Pages portal and browser-only static demo |
 
 ## Roadmap
 
 <div class="lp-callout">
-  LitePerm now includes a GitHub Pages documentation portal and browser demo. The next major engineering milestones are continuous real-time streaming, stronger full-wave solver coupling, and AI-assisted inverse workflows.
+  LitePerm now includes a modular full-wave solver layer on top of the existing measurement, inverse-modelling, and research stack. The next major engineering milestones are deeper solver automation, real-time streaming, and AI-assisted inverse workflows.
 </div>
 
 Explore the full [Roadmap](roadmap.md), [Release Notes](release_notes.md), and [Downloads](downloads.md).

@@ -101,6 +101,8 @@ nav:
       - Patch Antenna Sensors: patch_antenna_guide.md
       - OECP Sensors: oecp_guide.md
       - Inverse Modelling: inverse_modelling_guide.md
+      - Full-Wave Simulation: full_wave_solver_guide.md
+      - Simulation Workflow: simulation_workflow.md
       - Research Mode: research_mode_guide.md
       - Live Measurement: live_measurement_guide.md
       - Research Showcase: research_showcase.md
@@ -112,6 +114,8 @@ nav:
       - API Documentation: api_guide.md
       - Developer Documentation: developer_guide.md
       - Development Guide: development_guide.md
+      - openEMS Setup: openems_setup_guide.md
+      - Meep Setup: meep_setup_guide.md
       - Downloads: downloads.md
       - Release Notes: release_notes.md
       - Roadmap: roadmap.md

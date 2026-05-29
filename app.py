@@ -27,9 +27,10 @@ from liteperm.geometry import (
     load_geometry_profile,
     save_geometry_profile_to_library,
 )
-from liteperm.inverse.common import InverseResult, LayerStack, ParameterSweepResult
+from liteperm.inverse.common import InverseResult, LayerStack, ParameterSweepResult, residual_measurement
 from liteperm.inverse.forward_models import build_forward_model, discover_forward_models
 from liteperm.inverse.inverse_solvers import discover_inverse_solvers
+from liteperm.inverse.optimisers.error_metrics import compute_scalar_error
 from liteperm.inverse.service import default_layer_stack, layer_stack_from_frame, layer_stack_to_frame, run_inverse_estimation
 from liteperm.inverse.validation import generate_validation_report
 from liteperm.inverse.visualisation import (
@@ -48,6 +49,9 @@ from liteperm.io.parsers import load_measurement
 from liteperm.models.core import CalibrationProfile, ExperimentMetadata, MeasurementData, SensorGeometryProfile, SweepConfig
 from liteperm.plugins.manager import discover_plugins, get_runnable_plugins
 from liteperm.sensors import build_sensor_model
+from liteperm.solvers import build_solver_adapter, discover_solver_adapters, solver_status_rows
+from liteperm.solvers.result import SimulationResult
+from liteperm.solvers.utils import cache_directory, simulation_cache_key, sweep_config_from_frequency_axis
 from liteperm.synthetic import generate_synthetic_dataset
 from liteperm.transform.permittivity import compute_material_spectrum
 from liteperm.utils.resources import get_reference_material_by_name, list_reference_material_names, load_reference_materials
@@ -98,6 +102,9 @@ def initialise_state() -> None:
         "inverse_result": None,
         "inverse_digital_twin": None,
         "inverse_sweep_result": None,
+        "full_wave_layer_stack": default_layer_stack("open_ended_coax_probe"),
+        "full_wave_result": None,
+        "full_wave_job": None,
     }
     for key, value in defaults.items():
         st.session_state.setdefault(key, value)
@@ -113,6 +120,13 @@ def reset_inverse_state(*, preserve_layer_stack: bool = True) -> None:
     st.session_state["inverse_sweep_result"] = None
     if not preserve_layer_stack:
         st.session_state["inverse_layer_stack"] = default_layer_stack(st.session_state["geometry_profile"].sensor_type)
+
+
+def reset_full_wave_state(*, preserve_layer_stack: bool = True) -> None:
+    st.session_state["full_wave_result"] = None
+    st.session_state["full_wave_job"] = None
+    if not preserve_layer_stack:
+        st.session_state["full_wave_layer_stack"] = default_layer_stack(st.session_state["geometry_profile"].sensor_type)
 
 
 def render_measurement_summary(measurement: MeasurementData) -> None:
@@ -244,6 +258,7 @@ def load_example_dataset(example_name: str) -> None:
     st.session_state["processed_measurement"] = None
     st.session_state["last_spectrum"] = None
     reset_inverse_state()
+    reset_full_wave_state()
 
 
 def connect_selected_device(device_kind: str, port: str) -> str:
@@ -278,6 +293,7 @@ def render_live_capture_results(result, live_placeholder) -> None:
     st.session_state["processed_measurement"] = result.processed_measurement
     st.session_state["last_spectrum"] = result.spectrum
     reset_inverse_state()
+    reset_full_wave_state()
     st.session_state["live_render_nonce"] = int(st.session_state.get("live_render_nonce", 0)) + 1
     render_nonce = st.session_state["live_render_nonce"]
     capture_index = result.raw_measurement.metadata.get("capture_index", "latest")
@@ -351,26 +367,100 @@ def build_research_metadata(default_name: str) -> ExperimentMetadata:
     )
 
 
-def ensure_inverse_layer_stack(sensor_type: str) -> None:
-    current_stack = st.session_state.get("inverse_layer_stack")
+def ensure_layer_stack_state(state_key: str, sensor_type: str) -> None:
+    current_stack = st.session_state.get(state_key)
     if current_stack is None or current_stack.metadata.get("sensor_type") != sensor_type:
-        st.session_state["inverse_layer_stack"] = default_layer_stack(sensor_type)
+        st.session_state[state_key] = default_layer_stack(sensor_type)
 
 
-def render_inverse_layer_stack_editor(sensor_type: str):
-    ensure_inverse_layer_stack(sensor_type)
-    layer_stack = st.session_state["inverse_layer_stack"]
+def render_layer_stack_editor(*, state_key: str, sensor_type: str, key_prefix: str):
+    ensure_layer_stack_state(state_key, sensor_type)
+    layer_stack = st.session_state[state_key]
     editor_frame = layer_stack_to_frame(layer_stack)
     edited_frame = st.data_editor(
         editor_frame,
         num_rows="dynamic",
         use_container_width=True,
-        key=f"inverse_layer_stack_editor_{sensor_type}",
+        key=f"{key_prefix}_layer_stack_editor_{sensor_type}",
     )
     updated_stack = layer_stack_from_frame(pd.DataFrame(edited_frame))
     updated_stack.metadata["sensor_type"] = sensor_type
-    st.session_state["inverse_layer_stack"] = updated_stack
+    st.session_state[state_key] = updated_stack
     return updated_stack
+
+
+def render_inverse_layer_stack_editor(sensor_type: str):
+    return render_layer_stack_editor(state_key="inverse_layer_stack", sensor_type=sensor_type, key_prefix="inverse")
+
+
+def render_full_wave_layer_stack_editor(sensor_type: str):
+    return render_layer_stack_editor(state_key="full_wave_layer_stack", sensor_type=sensor_type, key_prefix="full_wave")
+
+
+def build_phase_comparison_plot(measured: MeasurementData, predicted: MeasurementData):
+    figure = build_phase_plot(measured)
+    figure.data = []
+    frequency_measured = measured.frequency_hz / 1e9
+    frequency_predicted = predicted.frequency_hz / 1e9
+    figure.add_scatter(x=frequency_measured, y=measured.phase_deg, mode="lines", name="Measured phase")
+    figure.add_scatter(x=frequency_predicted, y=predicted.phase_deg, mode="lines", name="Simulated phase")
+    figure.update_layout(title="Measured vs Simulated Phase")
+    return figure
+
+
+def build_full_wave_forward_options(*, key_prefix: str) -> dict[str, Any]:
+    solver_adapters = discover_solver_adapters()
+    backend_columns = st.columns(4)
+    with backend_columns[0]:
+        simulation_backend = st.selectbox(
+            "Simulation backend",
+            options=["analytical", "openems", "cached", "surrogate"],
+            format_func=lambda item: {
+                "analytical": "Analytical baseline",
+                "openems": "openEMS simulation",
+                "cached": "Cached simulation result",
+                "surrogate": "Future surrogate model",
+            }[item],
+            key=f"{key_prefix}_simulation_backend",
+        )
+    with backend_columns[1]:
+        solver_name = st.selectbox(
+            "Solver adapter",
+            options=list(solver_adapters),
+            index=list(solver_adapters).index("openems") if "openems" in solver_adapters else 0,
+            format_func=lambda item: item.upper() if item in {"hfss", "cst"} else item.title(),
+            key=f"{key_prefix}_solver_name",
+            disabled=simulation_backend == "analytical",
+        )
+    with backend_columns[2]:
+        project_name = st.text_input("Simulation project", value="LitePerm Research", key=f"{key_prefix}_project_name")
+    with backend_columns[3]:
+        force_rerun = st.checkbox("Force rerun", value=False, key=f"{key_prefix}_force_rerun", disabled=simulation_backend != "openems")
+
+    detail_columns = st.columns(3)
+    with detail_columns[0]:
+        mesh_quality = st.selectbox("Mesh quality", options=["coarse", "medium", "fine"], index=1, key=f"{key_prefix}_mesh_quality")
+    with detail_columns[1]:
+        output_power = int(st.slider("Excitation power", min_value=0, max_value=3, value=0, key=f"{key_prefix}_output_power"))
+    with detail_columns[2]:
+        allow_fallback = st.checkbox(
+            "Allow analytical fallback",
+            value=False,
+            key=f"{key_prefix}_allow_fallback",
+            disabled=simulation_backend == "analytical",
+        )
+
+    cells_per_wavelength = {"coarse": 12, "medium": 20, "fine": 30}[mesh_quality]
+    return {
+        "simulation_backend": simulation_backend,
+        "solver_name": solver_name,
+        "project_name": project_name,
+        "force_rerun": force_rerun,
+        "allow_analytical_fallback": allow_fallback,
+        "mesh_settings": {"quality": mesh_quality, "cells_per_wavelength": cells_per_wavelength},
+        "boundary_conditions": {"x": "PML", "y": "PML", "z": "PML"},
+        "excitation_settings": {"output_power": output_power},
+    }
 
 
 def render_inverse_summary(result) -> None:
@@ -390,6 +480,224 @@ def render_inverse_summary(result) -> None:
     metrics[3].metric("Conductivity", f"{conductivity:.4f} S/m" if pd.notna(conductivity) else "n/a")
     metrics[4].metric("Thickness", f"{thickness * 1e3:.4f} mm" if pd.notna(thickness) else "n/a")
     st.caption(f"Estimated loss tangent: {loss_tangent:.4f}" if pd.notna(loss_tangent) else "Estimated loss tangent: n/a")
+
+
+def render_full_wave_simulation_tab() -> None:
+    st.subheader("Full-Wave Simulation")
+
+    solver_frame = pd.DataFrame(solver_status_rows())
+    st.markdown("### Solver Status")
+    st.dataframe(solver_frame, use_container_width=True)
+
+    geometry_profile = st.session_state["geometry_profile"]
+    measurement = st.session_state.get("measurement")
+    processed_measurement = st.session_state.get("processed_measurement")
+    sensor_type = geometry_profile.sensor_type or "generic_resonator"
+    sweep_defaults = (
+        float(measurement.frequency_hz.min()),
+        float(measurement.frequency_hz.max()),
+        int(measurement.frequency_hz.size),
+    ) if measurement is not None else (1e8, 3e9, 401)
+
+    st.markdown("### Simulation Setup")
+    setup_columns = st.columns(4)
+    with setup_columns[0]:
+        solver_name = st.selectbox(
+            "Solver",
+            options=list(discover_solver_adapters()),
+            index=list(discover_solver_adapters()).index("openems") if "openems" in discover_solver_adapters() else 0,
+            format_func=lambda item: item.upper() if item in {"hfss", "cst"} else item.title(),
+            key="full_wave_solver_name",
+        )
+    with setup_columns[1]:
+        start_frequency_hz = float(st.number_input("Start Frequency (Hz)", value=sweep_defaults[0], step=1e6, format="%.0f", key="full_wave_start_hz"))
+    with setup_columns[2]:
+        stop_frequency_hz = float(st.number_input("Stop Frequency (Hz)", value=sweep_defaults[1], step=1e6, format="%.0f", key="full_wave_stop_hz"))
+    with setup_columns[3]:
+        points = int(st.number_input("Number of Points", value=sweep_defaults[2], step=10, key="full_wave_points"))
+
+    option_columns = st.columns(4)
+    with option_columns[0]:
+        project_name = st.text_input("Project name", value="LitePerm Research", key="full_wave_project_name")
+    with option_columns[1]:
+        mesh_quality = st.selectbox("Mesh quality", ["coarse", "medium", "fine"], index=1, key="full_wave_mesh_quality")
+    with option_columns[2]:
+        use_cache = st.checkbox("Reuse cache", value=True, key="full_wave_use_cache")
+    with option_columns[3]:
+        force_rerun = st.checkbox("Force rerun", value=False, key="full_wave_force_rerun")
+
+    selected_adapter = build_solver_adapter(solver_name)
+    environment = selected_adapter.validate_environment()
+    status_message = f"{solver_name} status: `{environment.get('status', 'unknown')}`"
+    if environment.get("available"):
+        st.success(status_message)
+    else:
+        st.warning(status_message)
+    for message in environment.get("messages", []):
+        st.caption(message)
+    if environment.get("setup_guide"):
+        st.caption(f"Setup guide: `{environment['setup_guide']}`")
+
+    st.markdown("### Material Stack")
+    layer_stack = render_full_wave_layer_stack_editor(sensor_type)
+
+    sweep_config = SweepConfig(
+        start_frequency_hz=start_frequency_hz,
+        stop_frequency_hz=stop_frequency_hz,
+        points=points,
+        output_power=0,
+        sweep_speed="simulation",
+        average_count=1,
+        channel="S11",
+    )
+    mesh_settings = {
+        "quality": mesh_quality,
+        "cells_per_wavelength": {"coarse": 12, "medium": 20, "fine": 30}[mesh_quality],
+    }
+    excitation_settings = {"output_power": 0}
+    cache_key = simulation_cache_key(
+        solver_name=solver_name,
+        sensor_type=sensor_type,
+        geometry_profile=geometry_profile,
+        material_stack=layer_stack,
+        sweep_config=sweep_config,
+        mesh_settings=mesh_settings,
+        boundary_conditions={"x": "PML", "y": "PML", "z": "PML"},
+        excitation_settings=excitation_settings,
+    )
+    simulation_output_dir = cache_directory(project_name, cache_key)
+    st.caption(f"Simulation cache directory: `{simulation_output_dir}`")
+
+    if st.button("Run Full-Wave Simulation", key="full_wave_run_button"):
+        try:
+            job = selected_adapter.build_job(
+                geometry_profile,
+                layer_stack,
+                sweep_config,
+                simulation_output_dir,
+                mesh_settings=mesh_settings,
+                boundary_conditions={"x": "PML", "y": "PML", "z": "PML"},
+                excitation_settings=excitation_settings,
+                cache_key=cache_key,
+                metadata={"project_name": project_name, "workflow": "full_wave_tab"},
+            )
+            result_file = simulation_output_dir / "simulation_result.json"
+            touchstone_file = simulation_output_dir / "simulated_response.s1p"
+            if use_cache and not force_rerun and (result_file.exists() or touchstone_file.exists()):
+                result = selected_adapter.parse_results(job)
+                st.info(f"Loaded cached simulation `{cache_key}`.")
+            else:
+                result = selected_adapter.run(job)
+                st.success(f"Simulation completed with `{solver_name}`.")
+            st.session_state["full_wave_job"] = job.to_dict()
+            st.session_state["full_wave_result"] = result.to_dict()
+        except Exception as error:
+            st.error(f"Full-wave simulation failed: {error}")
+
+    result_payload = st.session_state.get("full_wave_result")
+    if result_payload is None:
+        st.info("Run a full-wave simulation to visualise simulated S11, inspect the solver exports, and compare measured versus simulated responses.")
+        return
+
+    result = SimulationResult.from_dict(result_payload)
+    simulation_measurement = result.measurement
+    simulation_spectrum = result.to_material_spectrum()
+
+    st.markdown("### Results")
+    result_metrics = st.columns(4)
+    result_metrics[0].metric("Solver", result.solver_metadata.get("solver_name", solver_name))
+    result_metrics[1].metric("Points", f"{result.frequency_hz.size}")
+    result_metrics[2].metric("Runtime", f"{result.runtime_seconds:.2f} s" if result.runtime_seconds is not None else "n/a")
+    result_metrics[3].metric("Cache Key", result.solver_metadata.get("cache_key", cache_key))
+
+    result_columns = st.columns(2)
+    with result_columns[0]:
+        st.plotly_chart(build_magnitude_plot(simulation_measurement), use_container_width=True, key="full_wave_magnitude_chart")
+        st.plotly_chart(build_phase_plot(simulation_measurement), use_container_width=True, key="full_wave_phase_chart")
+    with result_columns[1]:
+        st.plotly_chart(build_smith_chart(simulation_measurement), use_container_width=True, key="full_wave_smith_chart")
+        st.plotly_chart(build_impedance_plot(simulation_spectrum), use_container_width=True, key="full_wave_impedance_chart")
+
+    st.plotly_chart(build_admittance_plot(simulation_spectrum), use_container_width=True, key="full_wave_admittance_chart")
+
+    export_columns = st.columns(2)
+    touchstone_path = Path(result.touchstone_export_path) if result.touchstone_export_path else None
+    csv_path = Path(result.csv_export_path) if result.csv_export_path else None
+    with export_columns[0]:
+        if touchstone_path is not None and touchstone_path.exists():
+            st.download_button(
+                "Download Touchstone",
+                data=touchstone_path.read_bytes(),
+                file_name=touchstone_path.name,
+                mime="text/plain",
+                key="full_wave_touchstone_download",
+            )
+    with export_columns[1]:
+        if csv_path is not None and csv_path.exists():
+            st.download_button(
+                "Download CSV",
+                data=csv_path.read_bytes(),
+                file_name=csv_path.name,
+                mime="text/csv",
+                key="full_wave_csv_download",
+            )
+
+    st.markdown("### Comparison Mode")
+    comparison_options = st.columns(2)
+    with comparison_options[0]:
+        comparison_input_mode = st.selectbox(
+            "Reference measurement",
+            options=["processed", "raw"],
+            index=0 if processed_measurement is not None else 1,
+            format_func=lambda item: "Processed / calibrated S11" if item == "processed" else "Raw measured S11",
+            key="full_wave_comparison_input",
+        )
+    with comparison_options[1]:
+        comparison_metric = st.selectbox(
+            "Comparison metric",
+            options=["rmse", "mse", "mae", "weighted_error", "complex_error"],
+            index=0,
+            key="full_wave_comparison_metric",
+        )
+
+    reference_measurement = processed_measurement if comparison_input_mode == "processed" and processed_measurement is not None else measurement
+    if reference_measurement is None:
+        st.info("Import or capture a measured response to compare it against the simulated full-wave result.")
+    elif reference_measurement.frequency_hz.size != simulation_measurement.frequency_hz.size:
+        st.warning("Measured and simulated responses currently use different frequency grids, so direct residual comparison is disabled.")
+    else:
+        residual = residual_measurement(reference_measurement, simulation_measurement)
+        comparison_error = compute_scalar_error(reference_measurement, simulation_measurement, metric=comparison_metric)
+        st.metric(comparison_metric.upper(), f"{comparison_error:.4f}")
+
+        overlay_columns = st.columns(2)
+        with overlay_columns[0]:
+            st.plotly_chart(
+                build_measured_vs_predicted_plot(reference_measurement, simulation_measurement),
+                use_container_width=True,
+                key="full_wave_measured_vs_simulated_magnitude_chart",
+            )
+            st.plotly_chart(
+                build_phase_comparison_plot(reference_measurement, simulation_measurement),
+                use_container_width=True,
+                key="full_wave_measured_vs_simulated_phase_chart",
+            )
+        with overlay_columns[1]:
+            st.plotly_chart(
+                build_smith_comparison_plot(reference_measurement, simulation_measurement),
+                use_container_width=True,
+                key="full_wave_smith_comparison_chart",
+            )
+            st.plotly_chart(
+                build_residual_plot(residual),
+                use_container_width=True,
+                key="full_wave_residual_chart",
+            )
+
+    with st.expander("Simulation metadata"):
+        st.json(result.solver_metadata)
+    with st.expander("Simulation table"):
+        st.dataframe(result.to_dataframe(), use_container_width=True)
 
 
 def build_inverse_solver_options(solver_key: str) -> dict[str, Any]:
@@ -436,7 +744,7 @@ def render_inverse_modelling_tab(
         return
 
     geometry_profile = st.session_state["geometry_profile"]
-    forward_model_options = list(forward_models)
+    forward_model_registry = list(forward_models)
     default_forward_model = geometry_profile.sensor_type if geometry_profile.sensor_type in forward_models else "generic_resonator"
     if geometry_profile.sensor_type not in forward_models:
         st.info(
@@ -455,8 +763,8 @@ def render_inverse_modelling_tab(
     with control_columns[1]:
         forward_model_key = st.selectbox(
             "Forward model",
-            options=forward_model_options,
-            index=forward_model_options.index(default_forward_model),
+            options=forward_model_registry,
+            index=forward_model_registry.index(default_forward_model),
             format_func=lambda item: item.replace("_", " ").title(),
             key="inverse_forward_model_key",
         )
@@ -487,12 +795,23 @@ def render_inverse_modelling_tab(
     inverse_measurement = processed_measurement if input_response_mode == "processed" and processed_measurement is not None else measurement
     st.caption(f"Inverse solver input: `{inverse_measurement.source_name or 'Measured S11'}`")
 
-    if forward_model_key == "patch_antenna":
+    full_wave_options: dict[str, Any] | None = None
+    layer_stack_sensor_type = geometry_profile.sensor_type if forward_model_key == "full_wave" else forward_model_key
+    if forward_model_key == "full_wave":
+        st.markdown("### Full-Wave Forward Model")
+        st.caption("Use the analytical baseline by default, then switch to cached or solver-backed simulations when you need higher-fidelity forward responses.")
+        full_wave_options = build_full_wave_forward_options(key_prefix="inverse_full_wave")
+        if full_wave_options["simulation_backend"] == "cached":
+            st.caption("Cached mode reuses previously exported solver results from the simulation cache.")
+    elif forward_model_key == "patch_antenna":
         st.markdown("### Patch Antenna Material Characterisation Mode")
         st.caption("Use this mode to estimate multilayer dielectric properties directly from the measured resonance shift and S11 shape.")
 
-    layer_stack = render_inverse_layer_stack_editor(forward_model_key)
-    model = build_forward_model(forward_model_key, geometry=geometry_profile, layer_stack=layer_stack)
+    layer_stack = render_inverse_layer_stack_editor(layer_stack_sensor_type)
+    model_kwargs: dict[str, Any] = {"geometry": geometry_profile, "layer_stack": layer_stack}
+    if full_wave_options:
+        model_kwargs["metadata_overrides"] = full_wave_options
+    model = build_forward_model(forward_model_key, **model_kwargs)
     validation_messages = model.validate()
     for message in validation_messages:
         st.warning(message)
@@ -552,6 +871,7 @@ def render_inverse_modelling_tab(
                     layer_stack=layer_stack,
                     forward_model_key=forward_model_key,
                     solver_name=solver_key,
+                    forward_model_options=full_wave_options,
                     parameter_names=selected_parameters,
                     error_metric=error_metric,
                     solver_options=solver_options,
@@ -706,7 +1026,7 @@ def main() -> None:
     material_db = get_material_database()
     plugins = discover_plugins()
     runnable_plugins = get_runnable_plugins()
-    forward_models = discover_forward_models()
+    forward_models = discover_forward_models(include_full_wave=True)
     inverse_solvers = discover_inverse_solvers()
     reference_materials = load_reference_materials()
     reference_names = list_reference_material_names()
@@ -736,6 +1056,7 @@ def main() -> None:
             "Calibration",
             "Sensor Geometry",
             "Material Properties",
+            "Full-Wave Simulation",
             "Inverse Modelling",
             "Advanced Modelling",
             "Research Mode",
@@ -749,6 +1070,7 @@ def main() -> None:
         calibration_tab,
         geometry_tab,
         material_tab,
+        full_wave_tab,
         inverse_tab,
         modelling_tab,
         research_tab,
@@ -767,6 +1089,7 @@ def main() -> None:
                     st.session_state["processed_measurement"] = None
                     st.session_state["last_spectrum"] = None
                     reset_inverse_state()
+                    reset_full_wave_state()
                 except Exception as error:
                     st.error(f"Failed to import measurement: {error}")
         with example_column:
@@ -871,6 +1194,7 @@ def main() -> None:
                 st.session_state["processed_measurement"] = st.session_state["live_last_result"].processed_measurement
                 st.session_state["last_spectrum"] = st.session_state["live_last_result"].spectrum
                 reset_inverse_state()
+                reset_full_wave_state()
                 st.success("Live sweep copied into the current analysis workspace.")
 
         live_placeholder = st.empty()
@@ -1032,6 +1356,9 @@ def main() -> None:
                 )
                 with st.expander("Spectrum table"):
                     st.dataframe(spectrum.to_dataframe(), use_container_width=True)
+
+    with full_wave_tab:
+        render_full_wave_simulation_tab()
 
     with inverse_tab:
         render_inverse_modelling_tab(forward_models=forward_models, inverse_solvers=inverse_solvers)

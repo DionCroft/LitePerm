@@ -1,0 +1,71 @@
+# Example LitePerm Phase 4 full-wave job for a simple 2.45 GHz patch workflow.
+
+solver_name: openems
+sensor_type: patch_antenna
+geometry_profile:
+  name: Patch 2.45 GHz Demo
+  sensor_type: patch_antenna
+  parameters:
+    length_mm: 29.8
+    width_mm: 38.4
+    substrate_height_mm: 1.6
+    substrate_permittivity: 4.3
+    feed_offset_mm: 7.2
+    ground_length_mm: 60.0
+    ground_width_mm: 60.0
+material_stack:
+  metadata:
+    sensor_type: patch_antenna
+  layers:
+    - name: air
+      material_name: Air
+      thickness_m: 0.001
+      epsilon_real: 1.0006
+      epsilon_imag: 0.0
+      conductivity_s_per_m: 0.0
+      loss_tangent: 0.0
+      role: air
+      mutable: false
+    - name: protective_layer
+      material_name: PTFE
+      thickness_m: 0.00015
+      epsilon_real: 2.1
+      epsilon_imag: 0.00042
+      conductivity_s_per_m: 0.0
+      loss_tangent: 0.0002
+      role: protective_layer
+      mutable: true
+    - name: material_under_test
+      material_name: Water Demo
+      thickness_m: 0.0012
+      epsilon_real: 30.0
+      epsilon_imag: 12.0
+      conductivity_s_per_m: 0.5
+      loss_tangent: 0.4
+      role: material
+      mutable: true
+    - name: substrate
+      material_name: FR4
+      thickness_m: 0.0016
+      epsilon_real: 4.3
+      epsilon_imag: 0.086
+      conductivity_s_per_m: 0.0117
+      loss_tangent: 0.02
+      role: substrate
+      mutable: false
+sweep_start_frequency_hz: 2200000000.0
+sweep_stop_frequency_hz: 2700000000.0
+number_of_points: 401
+boundary_conditions:
+  x: PML
+  y: PML
+  z: PML
+  ground_plane: PEC
+mesh_settings:
+  quality: medium
+  cells_per_wavelength: 20
+excitation_settings:
+  output_power: 0
+  port: lumped_feed
+notes: >
+  Intended as a reproducible LitePerm example for the Phase 4 openEMS adapter pathway.

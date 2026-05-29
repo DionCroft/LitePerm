@@ -1,5 +1,17 @@
 # Release Notes
 
+## v0.5.0
+
+LitePerm Phase 4 adds the first full-wave solver integration layer.
+
+Highlights:
+
+- `liteperm.solvers` package with job, result, registry, cache, export, and validation helpers
+- `FullWaveForwardModel` for analytical, cached, and solver-backed workflows
+- `Full-Wave Simulation` dashboard tab with solver status, setup, export, and comparison views
+- openEMS adapter scaffold and Meep adapter scaffold
+- simulation workflow docs and example job files
+
 ## v0.4.0
 
 LitePerm Phase 4 turns the repository into a public-facing open-source project portal.

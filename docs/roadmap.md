@@ -2,6 +2,13 @@
 
 ## Completed
 
+### Platform Foundation
+
+- GitHub Pages documentation portal
+- browser-based LitePerm Web demo
+- public downloads, release notes, and citation metadata
+- deployment-ready documentation workflow for open-source collaboration
+
 ### Phase 2
 
 - Direct LiteVNA integration
@@ -22,18 +29,22 @@
 
 ### Phase 4
 
-- GitHub Pages documentation portal
-- Browser-based LitePerm Web demo
-- Public downloads, release notes, and citation metadata
-- Deployment-ready documentation workflow for open-source collaboration
+- full-wave solver integration layer
+- `SimulationJob` and `SimulationResult` models
+- solver registry with status reporting
+- openEMS adapter scaffold
+- Meep adapter scaffold
+- simulation caching under project archives
+- measured-versus-simulated S11 comparison workflows
 
 ## Planned
 
 ### Phase 5
 
-- Real-time LiteVNA streaming with continuous inverse updates
-- GPU-aware solver acceleration hooks
-- Digital twin synchronisation improvements
+- real-time LiteVNA streaming with continuous inverse updates
+- deeper openEMS automation
+- Meep execution support beyond the current scaffold
+- digital twin synchronisation improvements
 
 ### Phase 6
 
@@ -45,7 +56,8 @@
 ### Phase 7
 
 - patch antenna inverse modelling refinements
-- openEMS, Meep, HFSS, CST, and COMSOL coupling adapters
+- solver-specific mesh and boundary presets
+- HFSS, CST, and COMSOL enterprise adapter work
 
 ### Phase 8
 
