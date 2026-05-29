@@ -11,7 +11,8 @@
     </p>
     <div class="lp-button-row">
       <a class="md-button md-button--primary" href="getting_started.md">Get Started</a>
-      <a class="md-button" href="QuickStart.md">15-Minute Quick Start</a>
+      <a class="md-button" href="quick_install_5_minutes.md">Quick Install</a>
+      <a class="md-button" href="first_litevna_measurement_tutorial.md">First Measurement Tutorial</a>
       <a class="md-button" href="web_demo.md">Try the Browser Demo</a>
       <a class="md-button" href="https://github.com/DionCroft/LitePerm">View on GitHub</a>
     </div>

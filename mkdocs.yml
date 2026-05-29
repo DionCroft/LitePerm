@@ -90,10 +90,12 @@ nav:
       - Overview: getting_started.md
       - Installation: installation_guide.md
       - Windows 11: installation_windows_11.md
+      - Quick Install (5 Minutes): quick_install_5_minutes.md
       - Ubuntu: installation_ubuntu.md
       - WSL2: installation_wsl2.md
       - LiteVNA Setup: litevna_setup.md
       - Quick Start: QuickStart.md
+      - First LiteVNA Measurement Tutorial: first_litevna_measurement_tutorial.md
   - Measurement Workflows:
       - Calibration: calibration_guide.md
       - Patch Antenna Sensors: patch_antenna_guide.md

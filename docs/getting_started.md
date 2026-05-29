@@ -5,7 +5,9 @@ LitePerm serves three main kinds of users:
 | If you want to... | Start here |
 | --- | --- |
 | Install LitePerm for the first time | [Installation Guide](installation_guide.md) |
+| Get the dashboard running as fast as possible | [Quick Install (5 Minutes)](quick_install_5_minutes.md) |
 | Get from zero to a saved experiment in one session | [Quick Start](QuickStart.md) |
+| Go from LiteVNA export to a permittivity plot | [First LiteVNA Measurement Tutorial](first_litevna_measurement_tutorial.md) |
 | Connect a LiteVNA and capture live data | [LiteVNA Setup](litevna_setup.md) |
 | Explore the project before installing Python | [Web Demo](web_demo.md) |
 
