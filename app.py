@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import time
 from io import BytesIO
 from pathlib import Path
@@ -7,6 +8,7 @@ from typing import Any
 
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 from liteperm.acquisition import AcquisitionPipeline
 from liteperm.ai.dataset_builder import build_experiment_dataset
@@ -105,6 +107,9 @@ def initialise_state() -> None:
         "full_wave_layer_stack": default_layer_stack("open_ended_coax_probe"),
         "full_wave_result": None,
         "full_wave_job": None,
+        "docs_demo_marker": "",
+        "docs_inverse_demo_marker": "",
+        "docs_full_wave_demo_marker": "",
     }
     for key, value in defaults.items():
         st.session_state.setdefault(key, value)
@@ -127,6 +132,13 @@ def reset_full_wave_state(*, preserve_layer_stack: bool = True) -> None:
     st.session_state["full_wave_job"] = None
     if not preserve_layer_stack:
         st.session_state["full_wave_layer_stack"] = default_layer_stack(st.session_state["geometry_profile"].sensor_type)
+
+
+def _query_param_value(name: str, default: str = "") -> str:
+    value = st.query_params.get(name, default)
+    if isinstance(value, list):
+        return str(value[0]) if value else default
+    return str(value)
 
 
 def render_measurement_summary(measurement: MeasurementData) -> None:
@@ -249,6 +261,112 @@ def compute_current_spectrum(selected_plugin: str, apply_calibration: bool):
     )
     st.session_state["processed_measurement"] = working_measurement
     return spectrum, working_measurement
+
+
+def apply_documentation_demo_state(selected_plugin: str) -> None:
+    demo = _query_param_value("demo", "").strip().lower()
+    if not demo:
+        return
+
+    if st.session_state.get("docs_demo_marker") != demo:
+        if demo == "sample_touchstone":
+            st.session_state["measurement"] = load_measurement(EXAMPLE_ROOT / "sample_touchstone.s1p")
+            st.session_state["geometry_profile"] = build_geometry_profile("open_ended_coax_probe")
+        elif demo == "sample_csv":
+            st.session_state["measurement"] = load_measurement(EXAMPLE_ROOT / "sample_litevna.csv")
+            st.session_state["geometry_profile"] = build_geometry_profile("open_ended_coax_probe")
+        elif demo == "synthetic_patch":
+            geometry_profile = build_geometry_profile("patch_antenna")
+            truth_stack = default_layer_stack("patch_antenna")
+            material_layer = truth_stack.get_layer("material")
+            if material_layer is not None:
+                material_layer.material_name = "Water Demo"
+                material_layer.epsilon_real = 18.5
+                material_layer.epsilon_imag = 3.2
+                material_layer.conductivity_s_per_m = 0.35
+                material_layer.loss_tangent = 0.17
+                material_layer.thickness_m = 1.2e-3
+            measurement = build_forward_model("patch_antenna", geometry=geometry_profile, layer_stack=truth_stack).simulate(
+                pd.Series(range(241), dtype=float).to_numpy() * 5e6 + 1.8e9
+            ).measurement
+            measurement.source_name = "Synthetic Patch Demo"
+            st.session_state["measurement"] = measurement
+            st.session_state["geometry_profile"] = geometry_profile
+            inverse_guess = default_layer_stack("patch_antenna")
+            inverse_material_layer = inverse_guess.get_layer("material")
+            if inverse_material_layer is not None:
+                inverse_material_layer.epsilon_real = 7.5
+                inverse_material_layer.epsilon_imag = 0.9
+                inverse_material_layer.conductivity_s_per_m = 0.08
+            st.session_state["inverse_layer_stack"] = inverse_guess
+            st.session_state["full_wave_layer_stack"] = default_layer_stack("patch_antenna")
+        else:
+            return
+
+        st.session_state["processed_measurement"] = None
+        st.session_state["last_spectrum"] = None
+        reset_inverse_state(preserve_layer_stack=demo == "synthetic_patch")
+        reset_full_wave_state(preserve_layer_stack=demo == "synthetic_patch")
+        if demo != "synthetic_patch":
+            st.session_state["inverse_layer_stack"] = default_layer_stack(st.session_state["geometry_profile"].sensor_type)
+            st.session_state["full_wave_layer_stack"] = default_layer_stack(st.session_state["geometry_profile"].sensor_type)
+        st.session_state["docs_demo_marker"] = demo
+        st.session_state["docs_inverse_demo_marker"] = ""
+        st.session_state["docs_full_wave_demo_marker"] = ""
+
+    measurement = st.session_state.get("measurement")
+    if measurement is None:
+        return
+
+    spectrum, working_measurement = compute_material_spectrum(
+        measurement,
+        st.session_state["geometry_profile"],
+        method=selected_plugin,
+    )
+    st.session_state["processed_measurement"] = working_measurement
+    st.session_state["last_spectrum"] = spectrum
+
+    if _query_param_value("docs_full_wave", "0") == "1":
+        full_wave_marker = f"{demo}:{selected_plugin}"
+        if st.session_state.get("docs_full_wave_demo_marker") != full_wave_marker:
+            simulation = build_forward_model(
+                "full_wave",
+                geometry=st.session_state["geometry_profile"],
+                layer_stack=st.session_state["full_wave_layer_stack"],
+                metadata_overrides={"simulation_backend": "analytical"},
+            ).simulate(measurement.frequency_hz)
+            full_wave_result = SimulationResult.from_measurement(
+                simulation.measurement,
+                solver_metadata=simulation.metadata | {
+                    "solver_name": "openems",
+                    "execution_mode": "documentation_demo",
+                    "source_name": "Documentation Full-Wave Demo",
+                },
+                runtime_seconds=0.18,
+            )
+            st.session_state["full_wave_result"] = full_wave_result.to_dict()
+            st.session_state["docs_full_wave_demo_marker"] = full_wave_marker
+
+    if demo == "synthetic_patch" and _query_param_value("docs_inverse", "0") == "1":
+        inverse_marker = f"{demo}:{selected_plugin}"
+        if st.session_state.get("docs_inverse_demo_marker") != inverse_marker:
+            result, twin, sweep_result = run_inverse_estimation(
+                measurement=measurement,
+                geometry=st.session_state["geometry_profile"],
+                calibration_profile=st.session_state["calibration_profile"],
+                layer_stack=st.session_state["inverse_layer_stack"],
+                forward_model_key="patch_antenna",
+                solver_name="least_squares",
+                parameter_names=["material_epsilon_real", "material_epsilon_imag", "material_conductivity_s_per_m"],
+                error_metric="weighted_error",
+                solver_options={},
+                run_monte_carlo=False,
+                run_bootstrap=False,
+            )
+            st.session_state["inverse_result"] = result.to_dict()
+            st.session_state["inverse_digital_twin"] = twin.to_dict()
+            st.session_state["inverse_sweep_result"] = sweep_result.to_dict()
+            st.session_state["docs_inverse_demo_marker"] = inverse_marker
 
 
 def load_example_dataset(example_name: str) -> None:
@@ -406,6 +524,39 @@ def build_phase_comparison_plot(measured: MeasurementData, predicted: Measuremen
     figure.add_scatter(x=frequency_predicted, y=predicted.phase_deg, mode="lines", name="Simulated phase")
     figure.update_layout(title="Measured vs Simulated Phase")
     return figure
+
+
+def apply_documentation_tab_selection() -> None:
+    target_tab = _query_param_value("docs_tab", "").strip()
+    if not target_tab:
+        return
+    components.html(
+        f"""
+        <script>
+        const targetTab = {json.dumps(target_tab)};
+        let attempts = 0;
+        const activateTab = () => {{
+            const root = window.parent.document;
+            const tabs = Array.from(root.querySelectorAll('button[role="tab"]'));
+            const match = tabs.find((tab) => (tab.innerText || '').trim() === targetTab);
+            if (match) {{
+                if (match.getAttribute('aria-selected') !== 'true') {{
+                    match.click();
+                }}
+                clearInterval(timer);
+            }}
+            attempts += 1;
+            if (attempts > 60) {{
+                clearInterval(timer);
+            }}
+        }};
+        const timer = setInterval(activateTab, 250);
+        activateTab();
+        </script>
+        """,
+        height=0,
+        width=0,
+    )
 
 
 def build_full_wave_forward_options(*, key_prefix: str) -> dict[str, Any]:
@@ -1049,6 +1200,8 @@ def main() -> None:
         st.markdown("[Architecture diagram](docs/architecture.md)")
         st.markdown("API launch: `uvicorn liteperm.api.app:create_api_app --factory`")
 
+    apply_documentation_demo_state(selected_plugin)
+
     tabs = st.tabs(
         [
             "Raw Measurement",
@@ -1077,6 +1230,8 @@ def main() -> None:
         explorer_tab,
         materials_db_tab,
     ) = tabs
+
+    apply_documentation_tab_selection()
 
     with raw_tab:
         st.subheader("Import S11 data")

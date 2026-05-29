@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800">
+  <rect width="1280" height="800" rx="28" fill="#071827"/>
+  <rect x="48" y="48" width="1184" height="704" rx="24" fill="#0f172a" stroke="#14b8a6" stroke-width="3"/>
+  <text x="74" y="86" fill="#f8fafc" font-size="34" font-family="IBM Plex Sans, Arial, sans-serif" font-weight="700">Full-Wave Simulation</text>
+  <rect x="78" y="126" width="330" height="566" rx="18" fill="#10253a"/>
+  <rect x="438" y="126" width="754" height="168" rx="18" fill="#0b2233"/>
+  <rect x="438" y="320" width="362" height="176" rx="18" fill="#0b2233"/>
+  <rect x="830" y="320" width="362" height="176" rx="18" fill="#0b2233"/>
+  <rect x="438" y="522" width="754" height="170" rx="18" fill="#0b2233"/>
+  <text x="108" y="168" fill="#f8fafc" font-size="22" font-family="IBM Plex Sans, Arial, sans-serif">Solver status and setup</text>
+  <text x="466" y="168" fill="#f8fafc" font-size="22" font-family="IBM Plex Sans, Arial, sans-serif">Simulation summary</text>
+  <text x="466" y="206" fill="#94a3b8" font-size="18" font-family="IBM Plex Sans, Arial, sans-serif">Registry, cache, material stack, and sweep controls</text>
+  <path d="M466 252 H1128" stroke="#14b8a6" stroke-width="8"/>
+  <path d="M466 286 H1068" stroke="#f59e0b" stroke-width="8"/>
+  <polyline points="468,458 540,436 622,404 698,386 772,376" fill="none" stroke="#38bdf8" stroke-width="8"/>
+  <polyline points="860,452 928,418 1002,406 1070,388 1148,360" fill="none" stroke="#14b8a6" stroke-width="8"/>
+  <path d="M470 588 H1144" stroke="#14b8a6" stroke-width="8"/>
+  <path d="M470 626 H1100" stroke="#f59e0b" stroke-width="8"/>
+  <path d="M470 662 H1028" stroke="#94a3b8" stroke-width="8"/>
+</svg>

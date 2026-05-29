@@ -96,6 +96,7 @@ nav:
       - LiteVNA Setup: litevna_setup.md
       - Quick Start: QuickStart.md
       - First LiteVNA Measurement Tutorial: first_litevna_measurement_tutorial.md
+      - User Manual: user_manual.md
   - Measurement Workflows:
       - Calibration: calibration_guide.md
       - Patch Antenna Sensors: patch_antenna_guide.md

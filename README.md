@@ -5,310 +5,315 @@
 </p>
 
 <p align="center">
-<b>Open-Source RF Sensing, Dielectric Spectroscopy and Inverse Electromagnetic Modelling Platform</b>
+  <strong>Open-source RF sensing, dielectric spectroscopy, inverse electromagnetic modelling, and simulation-assisted material characterisation</strong>
 </p>
 
 <p align="center">
-Material Characterisation • RF Sensors • Patch Antennas • OECP • Biomedical Sensing • Digital Twins • AI-Ready Research Framework
+  LiteVNA • S11 Analysis • Permittivity Extraction • Inverse Modelling • Full-Wave Simulation • Research Data Management
 </p>
 
 ---
 
-# Overview
+## Overview
 
-LitePerm is an open-source research platform designed to transform low-cost RF measurement hardware such as the LiteVNA 64 into a powerful dielectric spectroscopy, RF sensing, and inverse electromagnetic modelling system.
+LitePerm is an open-source Python platform for turning one-port RF measurements into usable sensing and material-characterisation workflows.
 
-The project originated from the need for an accessible and extensible framework capable of converting measured S11 reflection data into meaningful material properties including:
+It started as a LiteVNA dielectric spectroscopy dashboard and has grown into a modular research framework for:
 
-* Complex Permittivity
-* Conductivity
-* Loss Tangent
-* Material Thickness
-* Dielectric Spectra
-* Resonant Behaviour
+- importing LiteVNA measurements
+- visualising S11, impedance, admittance, and Smith charts
+- estimating complex permittivity and conductivity
+- running inverse electromagnetic material estimation
+- storing experiments and metadata for research traceability
+- preparing for solver-backed and AI-assisted RF sensing workflows
 
-Unlike traditional VNA software, LitePerm is designed not only to visualise measurements but also to estimate unknown material properties through forward and inverse electromagnetic modelling.
+LitePerm is designed for academic labs, engineering teams, postgraduate research, and collaborators who need a transparent alternative to closed VNA analysis software.
 
-## Full-Wave Simulation
+## Current Status
 
-LitePerm now includes a modular Phase 4 full-wave solver layer designed to support simulation-assisted RF sensing workflows without locking the project to a single external tool.
+LitePerm currently includes implemented work from:
 
-Current Phase 4 support includes:
+- Phase 1: dielectric spectroscopy dashboard
+- Phase 2: device integration, research mode, and experiment storage
+- Phase 3: inverse electromagnetic modelling
+- Phase 4: full-wave solver integration layer
 
-* `liteperm/solvers` integration package
-* `SimulationJob` and `SimulationResult` models
-* Solver registry and environment checks
-* openEMS adapter scaffold
-* Meep adapter scaffold
-* Simulation caching under `Projects/<ProjectName>/simulations/`
-* Measured versus simulated S11 comparison
-* Full-wave forward-model support inside inverse modelling
+Latest major capabilities:
 
-Key Phase 4 documentation:
+- Touchstone and CSV import
+- LiteVNA USB serial acquisition
+- plugin-based permittivity transforms
+- inverse-modelling engine with uncertainty and sensitivity tooling
+- full-wave simulation registry, caching, and comparison workflows
+- SQLite-backed experiment archive
+- FastAPI service layer
+- MkDocs documentation site and browser demo
 
-* `docs/full_wave_solver_guide.md`
-* `docs/openems_setup_guide.md`
-* `docs/meep_setup_guide.md`
-* `docs/simulation_workflow.md`
-* `CHANGELOG.md`
+## What LitePerm Can Do
 
-## Website and Documentation
+### Measurement and Acquisition
 
-- GitHub Pages documentation portal: `https://dioncroft.github.io/LitePerm/`
+- Import Touchstone `.s1p` files
+- Import LiteVNA CSV exports
+- Connect to LiteVNA devices over USB serial
+- Discover COM ports automatically
+- Capture live sweeps into the analysis workspace
+- Save measured sweeps into research experiments
+
+### RF and Network Analysis
+
+- Plot S11 magnitude
+- Plot S11 phase
+- Display Smith charts
+- Convert reflection coefficient to impedance
+- Convert reflection coefficient to admittance
+- Compare measured and predicted responses
+
+### Dielectric Spectroscopy
+
+- Compute complex permittivity across frequency
+- Plot `epsilon'` and `epsilon''`
+- Plot loss tangent
+- Plot conductivity
+- Plot Nyquist responses
+- Export dielectric spectra to CSV
+
+### Transformation Models
+
+Built-in modelling plugins:
+
+- Stuchly
+- Marsland
+- Komarov
+
+The plugin architecture is designed so new transform methods can be added without rewriting the app.
+
+### Inverse Electromagnetic Modelling
+
+- Patch antenna forward model
+- Open-ended coax probe forward model
+- Microstrip resonator forward model
+- Generic resonator forward model
+- Least-squares inverse solver
+- Differential evolution solver
+- Particle swarm solver
+- Bayesian-style search solver
+- MCMC solver
+- uncertainty estimation
+- sensitivity analysis
+- parameter sweeps
+- digital twin updates
+
+### Full-Wave Simulation
+
+Phase 4 adds a modular solver integration layer under `liteperm/solvers`.
+
+Current support includes:
+
+- `SimulationJob` model
+- `SimulationResult` model
+- solver registry
+- environment validation
+- openEMS adapter scaffold
+- Meep adapter scaffold
+- cached simulation reuse
+- measured versus simulated S11 comparison
+- `FullWaveForwardModel` for inverse-modelling workflows
+
+LitePerm is intentionally not locked to one external solver. The architecture is prepared for future openEMS, Meep, HFSS, CST, and COMSOL expansion.
+
+### Research and Data Management
+
+- Research Mode metadata capture
+- experiment storage in SQLite
+- project-based archive folders under `Projects/`
+- calibration profile storage
+- geometry profile storage
+- experiment duplication, export, and deletion
+- material database
+- report and archive foundations
+
+### API and Automation
+
+- FastAPI application
+- REST endpoints for experiments, materials, calibrations, geometries, sweeps, and plugins
+- AI-preparation modules for future dataset building and feature extraction
+
+## Dashboard Overview
+
+The Streamlit dashboard currently includes:
+
+1. `Raw Measurement`
+   Import Touchstone or CSV data and inspect raw S11 traces.
+2. `Live Measurement`
+   Connect to a LiteVNA device, configure a sweep, and capture live data.
+3. `Calibration`
+   Define OSL standards, choose reference materials, and save calibration profiles.
+4. `Sensor Geometry`
+   Edit and save geometry profiles for patch, OECP, and resonator workflows.
+5. `Material Properties`
+   Compute dielectric spectra and inspect impedance, admittance, loss tangent, and conductivity.
+6. `Full-Wave Simulation`
+   Configure solver-backed jobs, inspect solver status, reuse cached simulations, and compare measured versus simulated S11.
+7. `Inverse Modelling`
+   Estimate material properties from measured RF responses with analytical or full-wave-backed forward models.
+8. `Advanced Modelling`
+   Review transformation plugins and compare modelling outputs.
+9. `Research Mode`
+   Save full experiments with metadata, calibration, geometry, and inverse results.
+10. `Experiment Explorer`
+    Search, reopen, duplicate, export, and delete archived experiments.
+11. `Material Database`
+    Browse and extend the built-in material library.
+
+## Supported Use Cases
+
+LitePerm is suitable for:
+
+- dielectric spectroscopy research
+- RF material characterisation
+- patch antenna sensors
+- open-ended coaxial probe measurements
+- microstrip resonator studies
+- moisture sensing
+- chemical sensing
+- biomedical sensing
+- implant sensor research preparation
+- simulation-assisted sensor development
+
+## Supported Sensor Families
+
+- Open-ended coaxial probe
+- Patch antenna
+- Microstrip resonator
+- Generic resonator
+- Future CSRR and metamaterial structures
+- Future implant and passive wireless sensors
+
+## Installation
+
+LitePerm supports:
+
+- Windows 11
+- Linux
+- WSL2
+
+### Quick Start
+
+```powershell
+git clone https://github.com/DionCroft/LitePerm.git
+cd LitePerm
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install --upgrade pip
+pip install -r requirements.txt
+streamlit run app.py
+```
+
+The dashboard is then available at:
+
+```text
+http://localhost:8501
+```
+
+### Optional API
+
+```powershell
+uvicorn liteperm.api.app:create_api_app --factory
+```
+
+FastAPI docs:
+
+```text
+http://localhost:8000/docs
+```
+
+## Documentation
+
+Project website:
+
+- GitHub Pages portal: `https://dioncroft.github.io/LitePerm/`
 - Browser demo: `https://dioncroft.github.io/LitePerm/web_demo/`
-- Repository: `https://github.com/DionCroft/LitePerm`
 
-The platform provides a foundation for research in:
+Recommended starting points:
 
-* Dielectric Spectroscopy
-* Microwave Material Characterisation
-* Patch Antenna Sensors
-* Open Ended Coaxial Probe Measurements
-* Biomedical RF Sensors
-* Implantable Wireless Sensors
-* Moisture Sensing
-* Chemical Sensing
-* Metamaterial Sensors
-* AI-Assisted RF Classification
-* Electromagnetic Digital Twins
+- [Getting Started](docs/getting_started.md)
+- [Quick Install (5 Minutes)](docs/quick_install_5_minutes.md)
+- [First LiteVNA Measurement Tutorial](docs/first_litevna_measurement_tutorial.md)
+- [Windows 11 Installation Guide](docs/installation_windows_11.md)
+- [User Manual](docs/user_manual.md)
 
----
+Core workflow guides:
 
-# Why LitePerm?
+- [LiteVNA Setup](docs/litevna_setup.md)
+- [Calibration Guide](docs/calibration_guide.md)
+- [Patch Antenna Guide](docs/patch_antenna_guide.md)
+- [OECP Guide](docs/oecp_guide.md)
+- [Inverse Modelling Guide](docs/inverse_modelling_guide.md)
+- [Full-Wave Solver Guide](docs/full_wave_solver_guide.md)
+- [Simulation Workflow](docs/simulation_workflow.md)
+- [Research Mode Guide](docs/research_mode_guide.md)
 
-Modern dielectric spectroscopy software is often:
+Solver setup:
 
-* Proprietary
-* Expensive
-* Hardware-specific
-* Difficult to extend
-* Focused on industrial VNAs
+- [openEMS Setup Guide](docs/openems_setup_guide.md)
+- [Meep Setup Guide](docs/meep_setup_guide.md)
 
-LitePerm aims to provide an open, transparent and extensible alternative that can be used by:
+## Example Workflows
 
-* Researchers
-* Students
-* Engineers
-* Startups
-* Academic laboratories
-* Maker communities
+### Workflow 1: Import and Inspect LiteVNA Data
 
-while leveraging affordable hardware such as the LiteVNA 64.
+1. Open `Raw Measurement`.
+2. Load `examples/sample_touchstone.s1p` or `examples/sample_litevna.csv`.
+3. Inspect magnitude, phase, and Smith chart plots.
 
-The long-term vision is to create a complete RF sensing ecosystem capable of linking:
+### Workflow 2: Compute Dielectric Spectra
 
-```text
-Measurement
-      ↓
-Calibration
-      ↓
-Electromagnetic Modelling
-      ↓
-Inverse Solvers
-      ↓
-Material Properties
-      ↓
-Digital Twin
-      ↓
-AI Classification
-```
+1. Load a measurement.
+2. Open `Material Properties`.
+3. Choose the transform plugin in the sidebar.
+4. Review `epsilon'`, `epsilon''`, loss tangent, conductivity, impedance, and admittance.
 
----
+### Workflow 3: Run Inverse Modelling
 
-# Key Features
+1. Load or capture a measurement.
+2. Choose a geometry profile.
+3. Open `Inverse Modelling`.
+4. Select a forward model and inverse solver.
+5. Choose the parameters to estimate.
+6. Run the estimation and inspect residuals, convergence, confidence intervals, and sensitivity plots.
 
-## RF Measurement
+### Workflow 4: Use the Full-Wave Simulation Layer
 
-* Import Touchstone (.s1p) files
-* Import LiteVNA CSV exports
-* Live LiteVNA acquisition
-* USB serial device support
-* Frequency sweep management
-* Measurement archiving
+1. Open `Full-Wave Simulation`.
+2. Review solver availability and setup status.
+3. Define the material stack, sweep, and mesh settings.
+4. Run or reuse a cached simulation.
+5. Compare measured and simulated responses.
 
-## RF Analysis
+### Workflow 5: Save a Research Experiment
 
-* S11 Magnitude
-* S11 Phase
-* Smith Charts
-* Impedance Analysis
-* Admittance Analysis
-* Resonance Detection
-* Q-Factor Analysis
+1. Load or capture data.
+2. Compute the dielectric spectrum.
+3. Optionally run inverse modelling.
+4. Open `Research Mode`.
+5. Enter metadata and save the experiment.
 
-## Dielectric Spectroscopy
-
-* Complex Permittivity Extraction
-* Dielectric Constant Analysis
-* Loss Tangent Calculation
-* Conductivity Estimation
-* Frequency Dependent Material Characterisation
-
-## Transformation Models
-
-Currently supported:
-
-* Stuchly
-* Marsland
-* Komarov
-
-Plugin architecture allows future models to be added without modifying the core software.
-
-## Sensor Support
-
-LitePerm is designed to support multiple RF sensing modalities.
-
-### Open Ended Coaxial Probe (OECP)
-
-Traditional dielectric spectroscopy measurements.
-
-### Patch Antenna Sensors
-
-Resonant sensing structures for:
-
-* Moisture
-* Chemical
-* Biological
-* Biomedical applications
-
-### Microstrip Resonators
-
-High sensitivity dielectric sensors.
-
-### Metamaterial Sensors
-
-Future support for:
-
-* CSRR
-* DGS
-* Metasurface structures
-
----
-
-# Inverse Electromagnetic Modelling
-
-One of LitePerm's primary goals is to estimate unknown material properties from measured RF responses.
-
-Traditional workflow:
-
-```text
-Known Material
-      ↓
-Simulation
-      ↓
-Predicted S11
-```
-
-LitePerm enables:
-
-```text
-Measured S11
-      ↓
-Forward Model
-      ↓
-Optimisation Engine
-      ↓
-Estimated Material Properties
-```
-
-Target outputs include:
-
-* Relative Permittivity (ε')
-* Dielectric Loss (ε'')
-* Conductivity (σ)
-* Loss Tangent (tanδ)
-* Material Thickness
-
----
-
-# Digital Twin Framework
-
-LitePerm introduces the concept of a measurement-linked digital twin.
-
-Each experiment can maintain a virtual representation of:
-
-* Sensor Geometry
-* Calibration State
-* Material Properties
-* Environmental Conditions
-* Measurement History
-
-allowing future integration with:
-
-* HFSS
-* CST Studio
-* COMSOL
-* openEMS
-* Meep
-
----
-
-# Research Mode
-
-LitePerm includes a dedicated research management framework.
-
-Each experiment can store:
-
-* Project Information
-* Sensor Configuration
-* Calibration Profiles
-* Environmental Conditions
-* Raw Measurements
-* Processed Results
-* Generated Reports
-
-Experiments are archived automatically using a structured project hierarchy.
-
----
-
-# Architecture
-
-```text
-LitePerm
-│
-├── Acquisition Layer
-│
-├── Calibration Engine
-│
-├── Transformation Engine
-│
-├── Sensor Models
-│
-├── Forward Models
-│
-├── Inverse Solvers
-│
-├── Uncertainty Analysis
-│
-├── Visualisation Layer
-│
-├── Research Database
-│
-├── Digital Twin Engine
-│
-└── API Layer
-```
-
----
-
-# Repository Structure
+## Repository Structure
 
 ```text
 LitePerm/
-│
 ├── app.py
-├── requirements.txt
 ├── README.md
-├── LICENSE
-│
+├── CHANGELOG.md
+├── requirements.txt
+├── requirements-docs.txt
 ├── docs/
 ├── examples/
 ├── profiles/
 ├── Projects/
 ├── tests/
-│
 └── liteperm/
-    │
     ├── acquisition/
     ├── ai/
     ├── api/
@@ -322,6 +327,7 @@ LitePerm/
     ├── plugins/
     ├── reports/
     ├── sensors/
+    ├── solvers/
     ├── synthetic/
     ├── transform/
     ├── uncertainty/
@@ -329,534 +335,60 @@ LitePerm/
     └── visualisation/
 ```
 
----
+## Testing and Validation
 
-# Installation
-
-## Recommended Beginner Pages
-
-If you are completely new to Git, GitHub, Python, or LitePerm, start with:
-
-* `docs/installation_windows_11.md`
-* `docs/quick_install_5_minutes.md`
-* `docs/first_litevna_measurement_tutorial.md`
-
-## LitePerm Installation Guide (Windows 11)
-
-### Overview
-
-This guide takes you from a completely new Windows 11 setup to a working LitePerm environment capable of:
-
-* Loading LiteVNA Touchstone (`.s1p`) files
-* Importing LiteVNA CSV exports
-* Performing dielectric spectroscopy analysis
-* Running inverse electromagnetic modelling
-* Using Research Mode
-* Accessing the LitePerm dashboard locally
-
-Estimated setup time:
-
-`15-30 minutes`
-
-### Step 1 - Create a GitHub Account
-
-If you do not already have a GitHub account:
-
-1. Visit `https://github.com`
-2. Click `Sign Up`
-3. Follow the registration process
-4. Verify your email address
-5. Log into GitHub
-
-### Step 2 - Install Git
-
-LitePerm is distributed using Git.
-
-Download Git for Windows:
-
-`https://git-scm.com/download/win`
-
-Installation:
-
-1. Run the downloaded installer
-2. Accept the default settings
-3. Click `Next`
-4. Click `Install`
-5. Finish installation
-
-Verify Git installation:
-
-Open PowerShell and run:
+Run the test suite:
 
 ```powershell
-git --version
+python -m pytest -q
 ```
 
-Expected output:
-
-```text
-git version 2.x.x
-```
-
-### Step 3 - Install Python
-
-LitePerm currently targets:
-
-`Python 3.12.x`
-
-Download Python:
-
-`https://www.python.org/downloads/`
-
-Important:
-
-When the installer appears, tick:
-
-`Add Python to PATH`
-
-before clicking `Install Now`.
-
-Verify Python installation:
+Build the documentation locally:
 
 ```powershell
-python --version
-pip --version
+python -m mkdocs build --strict
 ```
 
-Expected output:
+## Roadmap Snapshot
 
-```text
-Python 3.12.x
-pip xx.x
-```
+Completed:
 
-### Step 4 - Install Visual Studio Code (Recommended)
+- Phase 1: dielectric spectroscopy platform
+- Phase 2: research platform and experiment management
+- Phase 3: inverse electromagnetic modelling
+- Phase 4: full-wave solver integration layer
 
-Download:
+Planned next areas:
 
-`https://code.visualstudio.com/`
+- deeper solver automation
+- surrogate and physics-informed models
+- broader AI-assisted material classification
+- stronger digital twin synchronisation
+- additional resonator and biomedical sensing workflows
 
-Install using default settings.
+## Changelog
 
-VS Code is strongly recommended for:
+Recent project history is tracked in:
 
-* Viewing code
-* Editing files
-* Using Git
-* Running terminals
+- [CHANGELOG.md](CHANGELOG.md)
+- [docs/release_notes.md](docs/release_notes.md)
 
-### Step 5 - Download LitePerm
+## Citation
 
-Create a working directory. Example:
+If you use LitePerm in academic work, please include a citation to the project repository and release used in your study.
 
-```text
-C:\Projects
-```
+See:
 
-Open PowerShell and run:
+- [CITATION.cff](CITATION.cff)
+- [Publications](docs/publications.md)
 
-```powershell
-cd C:\Projects
-git clone https://github.com/DionCroft/LitePerm.git
-cd LitePerm
-```
+## License
 
-### Step 6 - Create Python Virtual Environment
+LitePerm is released under the MIT License.
 
-Create a virtual environment:
-
-```powershell
-python -m venv .venv
-```
-
-This creates an isolated Python environment inside:
-
-```text
-LitePerm
-`-- .venv
-```
-
-### Step 7 - Activate Virtual Environment
-
-Run:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-```
-
-Expected result:
-
-```text
-(.venv) PS C:\Projects\LitePerm>
-```
-
-If PowerShell blocks activation, run:
-
-```powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-.\.venv\Scripts\Activate.ps1
-```
-
-### Step 8 - Install LitePerm Dependencies
-
-Install all required packages:
-
-```powershell
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-This may take several minutes.
-
-### Step 9 - Verify Installation
-
-Run:
-
-```powershell
-pip list
-```
-
-You should see packages such as:
-
-* `streamlit`
-* `numpy`
-* `scipy`
-* `pandas`
-* `plotly`
-* `scikit-rf`
-* `fastapi`
-* `uvicorn`
-
-### Step 10 - Launch LitePerm
-
-Start the dashboard:
-
-```powershell
-streamlit run app.py
-```
-
-After a few seconds, a local URL similar to this should appear:
-
-```text
-http://localhost:8501
-```
-
-Open that address in your browser.
-
-### Step 11 - Load Example Data
-
-Use one of the included datasets:
-
-* `examples/sample_touchstone.s1p`
-* `examples/sample_litevna.csv`
-
-Verify:
-
-* S11 plot loads
-* Smith chart appears
-* Permittivity plots render
-
-### Step 12 - Launch API (Optional)
-
-LitePerm includes a FastAPI backend.
-
-Start it with:
-
-```powershell
-uvicorn liteperm.api.app:create_api_app --factory
-```
-
-Default API URL:
-
-```text
-http://localhost:8000
-```
-
-Swagger docs:
-
-```text
-http://localhost:8000/docs
-```
-
-### Step 13 - Connecting a LiteVNA
-
-1. Connect the LiteVNA via USB
-2. Open `Device Manager`
-3. Expand `Ports (COM & LPT)`
-4. Note the device COM port, for example `USB Serial Device (COM5)`
-5. In LitePerm, open `Live Measurement`
-6. Select the COM port and connect
-
-## Updating LitePerm
-
-Navigate to the project:
-
-```powershell
-cd C:\Projects\LitePerm
-.\.venv\Scripts\Activate.ps1
-git pull
-pip install -r requirements.txt
-```
-
-## Closing LitePerm
-
-Stop Streamlit:
-
-```text
-CTRL + C
-```
-
-Deactivate the environment:
-
-```powershell
-deactivate
-```
-
-## Common Problems
-
-### Python Not Found
-
-Error:
-
-```text
-python is not recognised
-```
-
-Solution:
-
-Reinstall Python and ensure `Add Python to PATH` is checked.
-
-### Git Not Found
-
-Error:
-
-```text
-git is not recognised
-```
-
-Solution:
-
-Reinstall Git for Windows.
-
-### Streamlit Not Found
-
-Error:
-
-```text
-streamlit is not recognised
-```
-
-Solution:
-
-Activate the virtual environment:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
-```
-
-### Port 8501 Already In Use
-
-Launch Streamlit on a different port:
-
-```powershell
-streamlit run app.py --server.port 8502
-```
-
-## Updating to New Releases
-
-To update to the latest release:
-
-```powershell
-git pull
-pip install -r requirements.txt
-```
-
-To switch to a specific release:
-
-```powershell
-git checkout v0.3.0
-```
-
-## Repository
-
-LitePerm GitHub repository:
-
-`https://github.com/DionCroft/LitePerm`
-
-## Support
-
-If you encounter issues:
-
-1. Check existing GitHub Issues
-2. Create a new GitHub Issue
-3. Include:
-   * Windows version
-   * Python version
-   * LitePerm version
-   * Error message
-   * Screenshot if possible
-
-This greatly speeds up troubleshooting.
-
----
-
-# Optional API Server
-
-Start the FastAPI backend:
-
-```bash
-uvicorn liteperm.api.app:create_api_app --factory
-```
-
----
-
-# Dashboard Modules
-
-Current dashboard includes:
-
-1. Raw Measurement
-2. Live Measurement
-3. Calibration
-4. Sensor Geometry
-5. Material Properties
-6. Full-Wave Simulation
-7. Inverse Modelling
-8. Advanced Modelling
-9. Research Mode
-10. Experiment Explorer
-11. Material Database
-
----
-
-# Reference Materials
-
-Built-in reference library includes:
-
-* Air
-* Water
-* Methanol
-* Ethanol
-* Acetone
-* NaCl Solutions
-* Saline
-* FR4
-* PTFE
-* Rogers 5880
-
-Users may extend the material database with custom entries.
-
----
-
-# Roadmap
-
-## Phase 1
-
-Core dielectric spectroscopy platform.
-
-✅ Complete
-
-## Phase 2
-
-Research platform and experiment management.
-
-✅ Complete
-
-## Phase 3
-
-Inverse electromagnetic modelling.
-
-✅ Complete
-
-## Phase 4
-
-Full-wave solver integration.
-
-Implemented:
-
-* openEMS adapter scaffold
-* Meep adapter scaffold
-* Solver registry
-* `SimulationJob` model
-* `SimulationResult` model
-* Simulation caching
-* Measured versus simulated comparison
-
-## Phase 5
-
-Physics-informed machine learning.
-
-Planned:
-
-* Surrogate Models
-* PINNs
-* Material Classification
-
-## Phase 6
-
-Digital Twin Synchronisation.
-
-Planned.
-
----
-
-# Contributing
-
-Contributions are welcome.
-
-Areas of interest include:
-
-* Electromagnetic Modelling
-* RF Sensors
-* Biomedical Sensors
-* Dielectric Spectroscopy
-* Material Characterisation
-* AI for RF Systems
-* Streamlit Development
-* Scientific Visualisation
-
-Please see:
-
-* CONTRIBUTING.md
-* ROADMAP.md
-
-for further details.
-
----
-
-# Citation
-
-If you use LitePerm in academic work, please cite:
-
-```text
-Mariyanayagam, D.
-LitePerm: Open-Source RF Sensing and Inverse Electromagnetic
-Modelling Platform.
-GitHub Repository:
-https://github.com/DionCroft/LitePerm
-```
-
----
-
-# License
-
-Released under the MIT License.
-
----
-
-# Author
+## Author
 
 **Dr Dion M. Mariyanayagam**
 
-Principal Lecturer in Electronics and Embedded Systems Engineering
-
+Principal Lecturer in Electronics and Embedded Systems Engineering  
 London Metropolitan University
-
-Research Interests:
-
-* RF Sensors
-* Embedded Systems
-* Biomedical Engineering
-* Microwave Sensing
-* Artificial Intelligence
-* Electromagnetic Material Characterisation

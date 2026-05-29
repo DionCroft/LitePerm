@@ -8,6 +8,7 @@ LitePerm serves three main kinds of users:
 | Get the dashboard running as fast as possible | [Quick Install (5 Minutes)](quick_install_5_minutes.md) |
 | Get from zero to a saved experiment in one session | [Quick Start](QuickStart.md) |
 | Go from LiteVNA export to a permittivity plot | [First LiteVNA Measurement Tutorial](first_litevna_measurement_tutorial.md) |
+| Learn the whole system end to end | [User Manual](user_manual.md) |
 | Connect a LiteVNA and capture live data | [LiteVNA Setup](litevna_setup.md) |
 | Explore the project before installing Python | [Web Demo](web_demo.md) |
 
@@ -60,6 +61,7 @@ The main LitePerm application gives you:
 - [Calibration Guide](calibration_guide.md)
 - [OECP Guide](oecp_guide.md)
 - [Inverse Modelling Guide](inverse_modelling_guide.md)
+- [User Manual](user_manual.md)
 
 ## Recommended First Goal
 

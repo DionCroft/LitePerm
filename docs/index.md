@@ -13,6 +13,7 @@
       <a class="md-button md-button--primary" href="getting_started.md">Get Started</a>
       <a class="md-button" href="quick_install_5_minutes.md">Quick Install</a>
       <a class="md-button" href="first_litevna_measurement_tutorial.md">First Measurement Tutorial</a>
+      <a class="md-button" href="user_manual.md">User Manual</a>
       <a class="md-button" href="web_demo.md">Try the Browser Demo</a>
       <a class="md-button" href="https://github.com/DionCroft/LitePerm">View on GitHub</a>
     </div>
@@ -77,6 +78,10 @@ The core research pipeline is intentionally modular:
   <div class="lp-gallery-card">
     <img src="images/inverse-modelling-view.svg" alt="Inverse modelling placeholder" />
     <div><strong>Inverse Modelling</strong><br />Estimate material properties and inspect convergence, residuals, and confidence intervals.</div>
+  </div>
+  <div class="lp-gallery-card">
+    <img src="images/full-wave-simulation-view.svg" alt="Full-wave simulation placeholder" />
+    <div><strong>Full-Wave Simulation</strong><br />Review solver status, configure a simulation job, and compare measured versus simulated S11.</div>
   </div>
   <div class="lp-gallery-card">
     <img src="images/research-mode-view.svg" alt="Research mode placeholder" />
