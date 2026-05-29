@@ -1,5 +1,16 @@
 # Changelog
 
+## v0.6.0
+
+- Added the Phase 5 permittivity-first workflow and measurement-first dashboard structure
+- Added Basic Mode and Advanced Mode so routine permittivity work is separated from advanced RF analysis
+- Added the new `Home`, `Connect LiteVNA`, `Calibration Wizard`, `Sensor Setup`, `Measure Material`, `Permittivity Results`, `Research Mode`, and `Advanced Tools` workflow pages
+- Added `liteperm/permittivity` with measurement orchestration, validation, comparison, and material matching helpers
+- Added permittivity validation with confidence scoring, plausibility checks, and reference-consistency reporting
+- Added reference-material comparison and nearest-neighbour style material identification support
+- Expanded the material database helpers with payload lookup and measurement-comparison support
+- Refactored the README and documentation site to emphasise permittivity measurement, calibration workflow, probe setup, reference materials, and validation
+
 ## v0.5.0
 
 - Added the Phase 4 full-wave solver integration layer

@@ -5,6 +5,7 @@ from __future__ import annotations
 import sqlite3
 from pathlib import Path
 
+from liteperm.utils.json_io import loads_json
 from liteperm.utils.json_io import dumps_json
 from liteperm.utils.paths import MATERIAL_DB_PATH, ensure_runtime_directories
 from liteperm.utils.resources import load_reference_materials
@@ -101,6 +102,28 @@ class MaterialDatabase:
             else:
                 rows = connection.execute("SELECT * FROM materials ORDER BY material_name").fetchall()
         return [dict(row) for row in rows]
+
+    def list_material_payloads(self, *, search: str = "") -> list[dict[str, object]]:
+        payloads: list[dict[str, object]] = []
+        for row in self.list_materials(search=search):
+            payload = loads_json(str(row["payload_json"])) if row.get("payload_json") else {}
+            payload.setdefault("material_name", row["material_name"])
+            payload.setdefault("display_name", row["material_name"])
+            payload.setdefault("category", row.get("category", ""))
+            payload.setdefault("source", row.get("source", "LitePerm material database"))
+            payloads.append(payload)
+        return payloads
+
+    def get_material(self, material_name: str) -> dict[str, object] | None:
+        token = material_name.strip().lower()
+        for payload in self.list_material_payloads():
+            candidates = {
+                str(payload.get("material_name", "")).strip().lower(),
+                str(payload.get("display_name", "")).strip().lower(),
+            }
+            if token in candidates:
+                return payload
+        return None
 
     def add_material(self, payload: dict[str, object]) -> None:
         with self._connect() as connection:

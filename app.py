@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+import plotly.graph_objects as go
 import streamlit as st
 import streamlit.components.v1 as components
 
@@ -49,6 +50,14 @@ from liteperm.inverse.visualisation import (
 from liteperm.io.exporters import figure_to_image_bytes, spectrum_to_csv_bytes
 from liteperm.io.parsers import load_measurement
 from liteperm.models.core import CalibrationProfile, ExperimentMetadata, MeasurementData, SensorGeometryProfile, SweepConfig
+from liteperm.permittivity import (
+    PermittivityMeasurementResult,
+    comparisons_to_frame,
+    compare_to_reference_materials,
+    identify_closest_materials,
+    run_permittivity_measurement,
+    validate_permittivity_measurement,
+)
 from liteperm.plugins.manager import discover_plugins, get_runnable_plugins
 from liteperm.sensors import build_sensor_model
 from liteperm.solvers import build_solver_adapter, discover_solver_adapters, solver_status_rows
@@ -71,6 +80,23 @@ from liteperm.visualisation.plots import (
 
 APP_ROOT = Path(__file__).resolve().parent
 EXAMPLE_ROOT = APP_ROOT / "examples"
+WORKFLOW_PAGES = [
+    "Home",
+    "Connect LiteVNA",
+    "Calibration Wizard",
+    "Sensor Setup",
+    "Measure Material",
+    "Permittivity Results",
+    "Research Mode",
+    "Advanced Tools",
+]
+SENSOR_LABELS = {
+    "open_ended_coax_probe": "Open Ended Coax Probe",
+    "patch_antenna": "Patch Sensor",
+    "microstrip_resonator": "Microstrip Resonator",
+    "generic_resonator": "Custom Sensor",
+}
+DISPLAY_TO_SENSOR = {label: key for key, label in SENSOR_LABELS.items()}
 
 
 @st.cache_resource
@@ -85,17 +111,35 @@ def get_material_database() -> MaterialDatabase:
 
 def initialise_state() -> None:
     defaults: dict[str, Any] = {
+        "user_mode": "Basic",
+        "workflow_page": "Home",
         "measurement": None,
         "processed_measurement": None,
+        "permittivity_result": None,
+        "last_validation_result": None,
+        "last_reference_comparisons": None,
+        "last_material_matches": None,
         "open_measurement": None,
         "short_measurement": None,
         "load_measurement": None,
+        "reference_measurement_1": None,
+        "reference_measurement_2": None,
+        "reference_material_1": "Water",
+        "reference_material_2": "Methanol",
+        "calibration_wizard_step": 0,
         "calibration_profile": build_calibration_profile("Default OSL"),
         "geometry_profile": build_geometry_profile("open_ended_coax_probe"),
+        "selected_permittivity_method": "stuchly",
+        "selected_reference_material": "Water",
         "last_spectrum": None,
         "device": None,
-        "device_kind": "future_device",
-        "device_port": "SIMULATED",
+        "device_kind": "litevna",
+        "device_port": "",
+        "measurement_start_frequency_hz": 1e8,
+        "measurement_stop_frequency_hz": 6e9,
+        "measurement_points": 401,
+        "measurement_output_power": 2,
+        "measurement_sweep_speed": "normal",
         "live_running": False,
         "live_last_result": None,
         "live_render_nonce": 0,
@@ -127,6 +171,15 @@ def reset_inverse_state(*, preserve_layer_stack: bool = True) -> None:
         st.session_state["inverse_layer_stack"] = default_layer_stack(st.session_state["geometry_profile"].sensor_type)
 
 
+def reset_permittivity_state() -> None:
+    st.session_state["permittivity_result"] = None
+    st.session_state["last_validation_result"] = None
+    st.session_state["last_reference_comparisons"] = None
+    st.session_state["last_material_matches"] = None
+    st.session_state["last_spectrum"] = None
+    st.session_state["processed_measurement"] = None
+
+
 def reset_full_wave_state(*, preserve_layer_stack: bool = True) -> None:
     st.session_state["full_wave_result"] = None
     st.session_state["full_wave_job"] = None
@@ -149,6 +202,22 @@ def render_measurement_summary(measurement: MeasurementData) -> None:
     metric_2.metric("Start", f"{start_ghz:.4f} GHz")
     metric_3.metric("Stop", f"{stop_ghz:.4f} GHz")
     metric_4.metric("Span", f"{stop_ghz - start_ghz:.4f} GHz")
+
+
+def workflow_sensor_label(sensor_type: str) -> str:
+    return SENSOR_LABELS.get(sensor_type, sensor_type.replace("_", " ").title())
+
+
+def active_sweep_config() -> SweepConfig:
+    return SweepConfig(
+        start_frequency_hz=float(st.session_state["measurement_start_frequency_hz"]),
+        stop_frequency_hz=float(st.session_state["measurement_stop_frequency_hz"]),
+        points=int(st.session_state["measurement_points"]),
+        output_power=int(st.session_state["measurement_output_power"]),
+        sweep_speed=str(st.session_state["measurement_sweep_speed"]),
+        average_count=4 if st.session_state["measurement_sweep_speed"] != "fast" else 1,
+        channel="S11",
+    )
 
 
 def render_figure_export(figure, prefix: str) -> None:
@@ -305,6 +374,7 @@ def apply_documentation_demo_state(selected_plugin: str) -> None:
 
         st.session_state["processed_measurement"] = None
         st.session_state["last_spectrum"] = None
+        reset_permittivity_state()
         reset_inverse_state(preserve_layer_stack=demo == "synthetic_patch")
         reset_full_wave_state(preserve_layer_stack=demo == "synthetic_patch")
         if demo != "synthetic_patch":
@@ -373,8 +443,7 @@ def load_example_dataset(example_name: str) -> None:
     if example_name == "None":
         return
     st.session_state["measurement"] = load_measurement(EXAMPLE_ROOT / example_name)
-    st.session_state["processed_measurement"] = None
-    st.session_state["last_spectrum"] = None
+    reset_permittivity_state()
     reset_inverse_state()
     reset_full_wave_state()
 
@@ -1169,6 +1238,1043 @@ def render_inverse_modelling_tab(
         st.dataframe(synthetic_frame, use_container_width=True)
 
 
+def reference_material_payloads(material_db: MaterialDatabase) -> list[dict[str, Any]]:
+    payloads = material_db.list_material_payloads()
+    return payloads or list(load_reference_materials().values())
+
+
+def current_permittivity_result() -> PermittivityMeasurementResult | None:
+    payload = st.session_state.get("permittivity_result")
+    if not payload:
+        return None
+    return PermittivityMeasurementResult.from_dict(payload)
+
+
+def calibration_measurements_ready() -> bool:
+    return all(
+        st.session_state.get(key) is not None
+        for key in ["open_measurement", "short_measurement", "load_measurement"]
+    )
+
+
+def set_workspace_measurement(measurement: MeasurementData) -> None:
+    st.session_state["measurement"] = measurement
+    st.session_state["processed_measurement"] = None
+    reset_permittivity_state()
+    reset_inverse_state()
+    reset_full_wave_state()
+
+
+def capture_device_measurement(label: str, role: str) -> MeasurementData:
+    device = st.session_state.get("device")
+    if device is None:
+        raise RuntimeError("No LiteVNA device is connected.")
+
+    config = active_sweep_config()
+    device.configure_sweep(config)
+    measurement = device.capture_sweep()
+    info = device.get_device_info()
+    measurement.source_name = f"{label} - {info.name}"
+    measurement.metadata.update(
+        {
+            "measurement_role": role,
+            "device_name": info.name,
+            "device_port": device.port,
+            "workflow": "phase5",
+        }
+    )
+    return measurement
+
+
+def build_reference_overlay_plot(
+    spectrum_result: PermittivityMeasurementResult,
+    reference_material: dict[str, Any],
+) -> go.Figure:
+    frequency_ghz = spectrum_result.spectrum.frequency_hz / 1e9
+    figure = go.Figure()
+    figure.add_scatter(x=frequency_ghz, y=spectrum_result.spectrum.epsilon_prime, mode="lines", name="Measured epsilon'")
+    figure.add_scatter(
+        x=frequency_ghz,
+        y=spectrum_result.spectrum.epsilon_double_prime,
+        mode="lines",
+        name="Measured epsilon''",
+    )
+    epsilon_real = float(reference_material.get("epsilon_real", 0.0) or 0.0)
+    epsilon_imag = float(reference_material.get("epsilon_imag", 0.0) or 0.0)
+    display_name = str(reference_material.get("display_name") or reference_material.get("material_name") or "Reference")
+    figure.add_scatter(
+        x=frequency_ghz,
+        y=[epsilon_real] * len(frequency_ghz),
+        mode="lines",
+        name=f"{display_name} epsilon'",
+        line=dict(dash="dash"),
+    )
+    figure.add_scatter(
+        x=frequency_ghz,
+        y=[epsilon_imag] * len(frequency_ghz),
+        mode="lines",
+        name=f"{display_name} epsilon''",
+        line=dict(dash="dot"),
+    )
+    figure.update_layout(
+        template="plotly_dark",
+        title="Measured vs Reference Permittivity",
+        xaxis_title="Frequency (GHz)",
+        yaxis_title="Relative Permittivity",
+        margin=dict(l=20, r=20, t=50, b=20),
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+    )
+    return figure
+
+
+def render_workflow_header() -> None:
+    calibration_state = "Ready" if calibration_measurements_ready() else "Pending"
+    measurement_state = "Loaded" if st.session_state.get("measurement") is not None else "Waiting"
+    result_state = "Available" if st.session_state.get("permittivity_result") else "Waiting"
+    device = st.session_state.get("device")
+    device_state = device.get_device_info().name if device is not None else "Not Connected"
+
+    status_columns = st.columns(4)
+    status_columns[0].metric("Device", device_state)
+    status_columns[1].metric("Calibration", calibration_state)
+    status_columns[2].metric("Measurement", measurement_state)
+    status_columns[3].metric("Permittivity Result", result_state)
+
+
+def render_home_page() -> None:
+    st.markdown("## Open-Source Permittivity Measurement Platform")
+    st.write(
+        "LitePerm is designed to behave like a scientific instrument for complex permittivity measurement with LiteVNA hardware."
+    )
+    st.write("Connect LiteVNA -> Select Sensor -> Run Calibration -> Measure Material -> Calculate epsilon' and epsilon''")
+    render_workflow_header()
+
+    action_columns = st.columns([1, 1, 2])
+    with action_columns[0]:
+        if st.button("Start Measurement", key="home_start_measurement"):
+            st.session_state["workflow_page"] = "Connect LiteVNA"
+            st.rerun()
+    with action_columns[1]:
+        if st.button("Open Results", key="home_open_results"):
+            st.session_state["workflow_page"] = "Permittivity Results"
+            st.rerun()
+
+    st.markdown("### Instrument Workflow")
+    workflow_columns = st.columns(len(WORKFLOW_PAGES) - 1)
+    for index, page_name in enumerate(WORKFLOW_PAGES[1:]):
+        with workflow_columns[index]:
+            st.caption(f"{index + 1}. {page_name}")
+
+    st.markdown("### User Modes")
+    basic_column, advanced_column = st.columns(2)
+    with basic_column:
+        st.markdown("#### Basic Mode")
+        st.write("For researchers, students, technicians, and industrial users who only need calibrated permittivity results.")
+        st.write("Shows frequency, epsilon', epsilon'', loss tangent, conductivity, confidence, and material comparison.")
+    with advanced_column:
+        st.markdown("#### Advanced Mode")
+        st.write("For RF engineers and developers who want S11, phase, Smith charts, inverse modelling, and full-wave solver tools.")
+        st.write("All existing RF and modelling features remain available under Advanced Tools.")
+
+
+def render_connect_litevna_page() -> None:
+    st.subheader("Connect LiteVNA")
+    st.write("LiteVNA is the primary device backend for LitePerm. Connect it here, confirm communication, and define the sweep used throughout the measurement workflow.")
+
+    device_candidates = discover_device_candidates()
+    detected_ports = [candidate.port for candidate in device_candidates if candidate.port]
+    current_kind = st.session_state.get("device_kind", "litevna")
+    backend_options = ["litevna", "future_device"]
+    selected_kind = st.selectbox(
+        "Device backend",
+        options=backend_options,
+        index=backend_options.index(current_kind) if current_kind in backend_options else 0,
+        format_func=lambda item: "LiteVNA USB Serial" if item == "litevna" else "Simulated Future Device",
+        key="connect_device_kind",
+    )
+    default_port = "SIMULATED" if selected_kind == "future_device" else (st.session_state.get("device_port") or (detected_ports[0] if detected_ports else ""))
+    selected_port = st.selectbox(
+        "Detected device port",
+        options=detected_ports or [default_port or ""],
+        key="connect_detected_port",
+    )
+    manual_port = st.text_input(
+        "Manual COM port override",
+        value=st.session_state["device_port"] if selected_kind == "litevna" else "SIMULATED",
+        key="connect_manual_port",
+    )
+    port_to_use = manual_port.strip() or selected_port
+
+    control_columns = st.columns(4)
+    with control_columns[0]:
+        if st.button("Detect Device", key="connect_detect_device"):
+            st.rerun()
+    with control_columns[1]:
+        if st.button("Connect", key="connect_device_button"):
+            try:
+                message = connect_selected_device(selected_kind, port_to_use)
+                st.success(message)
+            except Exception as error:
+                st.error(f"Connection failed: {error}")
+    with control_columns[2]:
+        if st.button("Test Connection", key="connect_test_device"):
+            device = st.session_state.get("device")
+            if device is None:
+                st.info("Connect a LiteVNA first.")
+            else:
+                st.success("Device responded correctly.") if device.test_connection() else st.error("Device did not respond.")
+    with control_columns[3]:
+        if st.button("Disconnect", key="connect_disconnect_device"):
+            disconnect_device()
+            st.info("Device disconnected.")
+
+    device = st.session_state.get("device")
+    if device is None:
+        st.error("Device Status: Not Connected")
+    else:
+        st.success("Device Status: Connected")
+        st.json(device.get_device_info().to_dict())
+
+    st.markdown("### Sweep Configuration")
+    sweep_columns = st.columns(5)
+    with sweep_columns[0]:
+        st.session_state["measurement_start_frequency_hz"] = float(
+            st.number_input(
+                "Start Frequency (Hz)",
+                value=float(st.session_state["measurement_start_frequency_hz"]),
+                step=1e6,
+                format="%.0f",
+                key="connect_start_frequency_hz",
+            )
+        )
+    with sweep_columns[1]:
+        st.session_state["measurement_stop_frequency_hz"] = float(
+            st.number_input(
+                "Stop Frequency (Hz)",
+                value=float(st.session_state["measurement_stop_frequency_hz"]),
+                step=1e6,
+                format="%.0f",
+                key="connect_stop_frequency_hz",
+            )
+        )
+    with sweep_columns[2]:
+        st.session_state["measurement_points"] = int(
+            st.number_input(
+                "Number of Points",
+                value=int(st.session_state["measurement_points"]),
+                step=10,
+                key="connect_measurement_points",
+            )
+        )
+    with sweep_columns[3]:
+        st.session_state["measurement_output_power"] = int(
+            st.slider(
+                "Output Power",
+                min_value=1,
+                max_value=3,
+                value=int(st.session_state["measurement_output_power"]),
+                key="connect_output_power",
+            )
+        )
+    with sweep_columns[4]:
+        st.session_state["measurement_sweep_speed"] = st.selectbox(
+            "Sweep Speed",
+            ["slow", "normal", "fast", "demo"],
+            index=["slow", "normal", "fast", "demo"].index(st.session_state["measurement_sweep_speed"]),
+            key="connect_sweep_speed",
+        )
+
+    active_config = active_sweep_config()
+    st.caption(
+        f"Configured sweep: {active_config.start_frequency_hz / 1e9:.3f} to {active_config.stop_frequency_hz / 1e9:.3f} GHz, "
+        f"{active_config.points} points, power level {active_config.output_power}, speed `{active_config.sweep_speed}`."
+    )
+
+
+def render_calibration_measurement_section(
+    label: str,
+    session_key: str,
+    uploader_key: str,
+    *,
+    role: str,
+) -> None:
+    st.markdown(f"### {label}")
+    measurement = st.session_state.get(session_key)
+    control_columns = st.columns([2, 1, 1])
+    with control_columns[0]:
+        uploaded_file = st.file_uploader(
+            f"Import {label} measurement",
+            type=["s1p", "csv"],
+            key=uploader_key,
+        )
+        if uploaded_file is not None:
+            try:
+                st.session_state[session_key] = parse_uploaded_measurement(uploaded_file)
+                measurement = st.session_state[session_key]
+                st.success(f"{label} loaded from file.")
+            except Exception as error:
+                st.error(f"Failed to import {label}: {error}")
+    with control_columns[1]:
+        if st.button(f"Capture {label}", key=f"capture_{session_key}"):
+            try:
+                st.session_state[session_key] = capture_device_measurement(label, role)
+                measurement = st.session_state[session_key]
+                st.success(f"{label} captured from the connected device.")
+            except Exception as error:
+                st.error(f"{label} capture failed: {error}")
+    with control_columns[2]:
+        if st.button(f"Clear {label}", key=f"clear_{session_key}"):
+            st.session_state[session_key] = None
+            measurement = None
+            st.info(f"{label} cleared.")
+
+    if measurement is not None:
+        st.caption(f"Loaded source: `{measurement.source_name or label}`")
+        render_measurement_summary(measurement)
+
+
+def render_calibration_wizard_page(reference_names: list[str]) -> None:
+    st.subheader("Calibration Wizard")
+    st.write("Run the guided open-short-load workflow, capture reference materials, and save the calibration profile that will be used during permittivity measurement.")
+
+    steps = [
+        ("Open", "open_measurement"),
+        ("Short", "short_measurement"),
+        ("Load", "load_measurement"),
+        ("Reference Material 1", "reference_measurement_1"),
+        ("Reference Material 2", "reference_measurement_2"),
+        ("Save Calibration", "save"),
+    ]
+    completed_steps = sum(1 for _, key in steps[:-1] if st.session_state.get(key) is not None)
+    st.progress(completed_steps / (len(steps) - 1))
+    step_columns = st.columns(len(steps))
+    for index, (label, key) in enumerate(steps):
+        status = "Complete" if (key == "save" and calibration_measurements_ready()) or (key != "save" and st.session_state.get(key) is not None) else "Pending"
+        step_columns[index].metric(label, status)
+
+    profile_columns = st.columns(3)
+    with profile_columns[0]:
+        calibration_name = st.text_input(
+            "Calibration profile name",
+            value=st.session_state["calibration_profile"].name,
+            key="wizard_calibration_name",
+        )
+    reference_options = ["None"] + reference_names
+    with profile_columns[1]:
+        reference_1 = st.selectbox(
+            "Reference Material 1",
+            options=reference_options,
+            index=reference_options.index(st.session_state["reference_material_1"]) if st.session_state["reference_material_1"] in reference_options else 0,
+            key="wizard_reference_material_1",
+        )
+    with profile_columns[2]:
+        reference_2 = st.selectbox(
+            "Reference Material 2",
+            options=reference_options,
+            index=reference_options.index(st.session_state["reference_material_2"]) if st.session_state["reference_material_2"] in reference_options else 0,
+            key="wizard_reference_material_2",
+        )
+    notes = st.text_area(
+        "Calibration notes",
+        value=st.session_state["calibration_profile"].notes,
+        key="wizard_calibration_notes",
+    )
+
+    render_calibration_measurement_section("Open", "open_measurement", "wizard_open_upload", role="open")
+    render_calibration_measurement_section("Short", "short_measurement", "wizard_short_upload", role="short")
+    render_calibration_measurement_section("Load", "load_measurement", "wizard_load_upload", role="load")
+    render_calibration_measurement_section("Reference Material 1", "reference_measurement_1", "wizard_reference_1_upload", role="reference_1")
+    render_calibration_measurement_section("Reference Material 2", "reference_measurement_2", "wizard_reference_2_upload", role="reference_2")
+
+    open_measurement = st.session_state.get("open_measurement")
+    short_measurement = st.session_state.get("short_measurement")
+    load_measurement = st.session_state.get("load_measurement")
+    metadata: dict[str, str] = {}
+    if open_measurement is not None:
+        metadata["open_source"] = open_measurement.source_name
+    if short_measurement is not None:
+        metadata["short_source"] = short_measurement.source_name
+    if load_measurement is not None:
+        metadata["load_source"] = load_measurement.source_name
+    if st.session_state.get("reference_measurement_1") is not None:
+        metadata["reference_1_source"] = st.session_state["reference_measurement_1"].source_name
+    if st.session_state.get("reference_measurement_2") is not None:
+        metadata["reference_2_source"] = st.session_state["reference_measurement_2"].source_name
+
+    st.session_state["calibration_profile"] = build_calibration_profile(
+        calibration_name,
+        reference_materials=[name for name in [reference_1, reference_2] if name != "None"],
+        notes=notes,
+        metadata=metadata,
+    )
+
+    action_columns = st.columns(3)
+    with action_columns[0]:
+        if st.button("Save Calibration", key="wizard_save_calibration"):
+            if not calibration_measurements_ready():
+                st.error("Capture or import the Open, Short, and Load standards before saving the calibration.")
+            else:
+                saved_path = save_calibration_profile_to_library(st.session_state["calibration_profile"])
+                st.success(f"Calibration saved to `{saved_path}`")
+    with action_columns[1]:
+        st.download_button(
+            "Download Calibration YAML",
+            data=calibration_profile_to_yaml(st.session_state["calibration_profile"]),
+            file_name="calibration_profile.yaml",
+            mime="application/x-yaml",
+            key="wizard_download_calibration_yaml",
+        )
+    with action_columns[2]:
+        if st.button("Continue to Sensor Setup", key="wizard_continue_sensor_setup"):
+            st.session_state["workflow_page"] = "Sensor Setup"
+            st.rerun()
+
+    st.code(calibration_profile_to_yaml(st.session_state["calibration_profile"]), language="yaml")
+
+
+def render_sensor_setup_page() -> None:
+    st.subheader("Sensor Setup")
+    st.write("Select the probe or sensor used for permittivity measurement, then adjust the geometry profile used by the transformation and modelling engines.")
+
+    sensor_labels = list(DISPLAY_TO_SENSOR)
+    current_sensor = st.session_state["geometry_profile"].sensor_type
+    current_label = workflow_sensor_label(current_sensor)
+    selected_label = st.radio(
+        "Sensor family",
+        sensor_labels,
+        index=sensor_labels.index(current_label) if current_label in sensor_labels else 0,
+        horizontal=True,
+        key="sensor_setup_sensor_label",
+    )
+    selected_sensor_type = DISPLAY_TO_SENSOR[selected_label]
+    if st.session_state["geometry_profile"].sensor_type != selected_sensor_type:
+        st.session_state["geometry_profile"] = build_geometry_profile(
+            selected_sensor_type,
+            name=selected_label,
+        )
+        st.session_state["inverse_layer_stack"] = default_layer_stack(selected_sensor_type)
+        st.session_state["full_wave_layer_stack"] = default_layer_stack(selected_sensor_type)
+        reset_full_wave_state(preserve_layer_stack=True)
+        reset_inverse_state(preserve_layer_stack=True)
+
+    saved_geometries = list_saved_geometry_profiles()
+    load_columns = st.columns(2)
+    with load_columns[0]:
+        selected_saved_geometry = st.selectbox(
+            "Load saved sensor profile",
+            options=["None"] + [entry["path"] for entry in saved_geometries],
+            format_func=lambda item: "None" if item == "None" else Path(item).stem,
+            key="sensor_setup_saved_geometry",
+        )
+    with load_columns[1]:
+        if st.button("Load Sensor Profile", key="sensor_setup_load_button") and selected_saved_geometry != "None":
+            st.session_state["geometry_profile"] = load_geometry_profile(selected_saved_geometry)
+            st.success("Sensor profile loaded from library.")
+
+    updated_geometry = geometry_editor(st.session_state["geometry_profile"])
+    st.session_state["geometry_profile"] = updated_geometry
+
+    method_options = list(get_runnable_plugins())
+    if st.session_state["selected_permittivity_method"] not in method_options and method_options:
+        st.session_state["selected_permittivity_method"] = method_options[0]
+    if method_options:
+        st.session_state["selected_permittivity_method"] = st.selectbox(
+            "Permittivity transformation model",
+            options=method_options,
+            index=method_options.index(st.session_state["selected_permittivity_method"]),
+            format_func=lambda item: get_runnable_plugins()[item].metadata().get("display_name", item.title()),
+            key="sensor_setup_permittivity_method",
+        )
+
+    sensor_model = build_sensor_model(
+        updated_geometry,
+        calibration=st.session_state["calibration_profile"],
+        frequency_range_hz=(
+            float(st.session_state["measurement_start_frequency_hz"]),
+            float(st.session_state["measurement_stop_frequency_hz"]),
+        ),
+    )
+
+    st.markdown("### Sensor Summary")
+    st.json(sensor_model.summary())
+
+    geometry_actions = st.columns(3)
+    with geometry_actions[0]:
+        if st.button("Save Sensor Profile", key="sensor_setup_save_geometry"):
+            saved_path = save_geometry_profile_to_library(updated_geometry)
+            st.success(f"Saved to `{saved_path}`")
+    with geometry_actions[1]:
+        st.download_button(
+            "Download Sensor YAML",
+            data=geometry_profile_to_yaml(updated_geometry),
+            file_name="geometry_profile.yaml",
+            mime="application/x-yaml",
+            key="sensor_setup_download_geometry",
+        )
+    with geometry_actions[2]:
+        if st.button("Continue to Measure Material", key="sensor_setup_continue_measurement"):
+            st.session_state["workflow_page"] = "Measure Material"
+            st.rerun()
+
+
+def render_measure_material_page(
+    material_db: MaterialDatabase,
+    runnable_plugins: dict[str, Any],
+) -> None:
+    st.subheader("Measure Material")
+    st.write("Capture a sweep from LiteVNA or import a saved file, then let LitePerm calculate complex permittivity as the primary result.")
+
+    measurement_columns = st.columns([2, 1, 1])
+    with measurement_columns[0]:
+        uploaded_file = st.file_uploader("Import Touchstone or CSV", type=["s1p", "csv"], key="measure_material_upload")
+        if uploaded_file is not None:
+            try:
+                set_workspace_measurement(parse_uploaded_measurement(uploaded_file))
+                st.success("Measurement imported.")
+            except Exception as error:
+                st.error(f"Failed to import measurement: {error}")
+    with measurement_columns[1]:
+        example_name = st.selectbox(
+            "Example dataset",
+            options=["None", "sample_touchstone.s1p", "sample_litevna.csv"],
+            key="measure_material_example_name",
+        )
+        if st.button("Load Example", key="measure_material_load_example"):
+            load_example_dataset(example_name)
+    with measurement_columns[2]:
+        if st.button("Capture From LiteVNA", key="measure_material_capture_device"):
+            try:
+                measurement = capture_device_measurement("Material Under Test", "dut")
+                set_workspace_measurement(measurement)
+                st.success("Measurement captured from LiteVNA.")
+            except Exception as error:
+                st.error(f"Capture failed: {error}")
+
+    measurement = st.session_state.get("measurement")
+    if measurement is None:
+        st.info("No material measurement is loaded yet.")
+    else:
+        render_measurement_summary(measurement)
+        st.caption(f"Measurement source: `{measurement.source_name}`")
+        if st.session_state["user_mode"] == "Advanced":
+            preview_columns = st.columns(2)
+            with preview_columns[0]:
+                st.plotly_chart(build_magnitude_plot(measurement), use_container_width=True, key="measure_material_raw_magnitude")
+            with preview_columns[1]:
+                st.plotly_chart(build_phase_plot(measurement), use_container_width=True, key="measure_material_raw_phase")
+
+    material_under_test = st.text_input("Material under test", value="Unknown material", key="measure_material_name")
+    selected_method = st.session_state["selected_permittivity_method"]
+    if selected_method not in runnable_plugins and runnable_plugins:
+        selected_method = list(runnable_plugins)[0]
+        st.session_state["selected_permittivity_method"] = selected_method
+
+    st.caption(
+        f"Active method: `{selected_method}` using `{workflow_sensor_label(st.session_state['geometry_profile'].sensor_type)}` "
+        f"with calibration profile `{st.session_state['calibration_profile'].name}`."
+    )
+
+    if st.button("Calculate Permittivity", key="measure_material_calculate"):
+        if measurement is None:
+            st.error("Import or capture a material measurement before calculating permittivity.")
+        else:
+            try:
+                reference_payloads = reference_material_payloads(material_db)
+                calibration_profile = st.session_state["calibration_profile"] if calibration_measurements_ready() else None
+                result = run_permittivity_measurement(
+                    measurement,
+                    st.session_state["geometry_profile"],
+                    method=selected_method,
+                    calibration_profile=calibration_profile,
+                    open_measurement=st.session_state.get("open_measurement"),
+                    short_measurement=st.session_state.get("short_measurement"),
+                    load_measurement=st.session_state.get("load_measurement"),
+                    reference_materials=reference_payloads,
+                )
+                result.metadata["material_under_test"] = material_under_test
+                st.session_state["permittivity_result"] = result.to_dict()
+                st.session_state["processed_measurement"] = result.processed_measurement
+                st.session_state["last_spectrum"] = result.spectrum
+                st.session_state["last_validation_result"] = result.validation.to_dict()
+                st.session_state["last_reference_comparisons"] = result.reference_comparisons
+                st.session_state["last_material_matches"] = result.identified_materials
+                if result.identified_materials:
+                    top_name = result.identified_materials[0].get("display_name") or result.identified_materials[0].get("material_name")
+                    st.session_state["selected_reference_material"] = str(top_name)
+                st.session_state["workflow_page"] = "Permittivity Results"
+                st.success("Permittivity calculation complete.")
+                st.rerun()
+            except Exception as error:
+                st.error(f"Permittivity calculation failed: {error}")
+
+
+def restore_experiment_result(record, material_db: MaterialDatabase) -> None:
+    st.session_state["measurement"] = record.raw_measurement
+    st.session_state["processed_measurement"] = record.processed_measurement
+    st.session_state["last_spectrum"] = record.spectrum
+    st.session_state["calibration_profile"] = record.calibration_profile
+    st.session_state["geometry_profile"] = record.geometry_profile
+    st.session_state["inverse_result"] = record.inverse_result
+    st.session_state["inverse_digital_twin"] = record.digital_twin
+    st.session_state["inverse_sweep_result"] = None
+    if record.digital_twin and record.digital_twin.get("layer_stack"):
+        st.session_state["inverse_layer_stack"] = LayerStack.from_dict(record.digital_twin["layer_stack"])
+    else:
+        st.session_state["inverse_layer_stack"] = default_layer_stack(record.geometry_profile.sensor_type)
+    st.session_state["full_wave_layer_stack"] = default_layer_stack(record.geometry_profile.sensor_type)
+
+    reference_payloads = reference_material_payloads(material_db)
+    validation = validate_permittivity_measurement(
+        record.spectrum,
+        record.processed_measurement,
+        calibration_profile=record.calibration_profile,
+        reference_materials=reference_payloads,
+    )
+    comparisons = compare_to_reference_materials(record.spectrum, reference_payloads)
+    matches = identify_closest_materials(record.spectrum, reference_payloads)
+    result = PermittivityMeasurementResult(
+        spectrum=record.spectrum,
+        processed_measurement=record.processed_measurement,
+        validation=validation,
+        reference_comparisons=comparisons,
+        identified_materials=matches,
+        confidence_estimate=validation.confidence_label,
+        metadata={"material_under_test": record.metadata.material_under_test, "method": "restored_experiment"},
+    )
+    st.session_state["permittivity_result"] = result.to_dict()
+    st.session_state["last_validation_result"] = validation.to_dict()
+    st.session_state["last_reference_comparisons"] = comparisons
+    st.session_state["last_material_matches"] = matches
+
+
+def render_permittivity_results_page(material_db: MaterialDatabase) -> None:
+    st.subheader("Permittivity Results")
+    result = current_permittivity_result()
+    if result is None:
+        st.info("Run a material measurement first to see epsilon', epsilon'', conductivity, loss tangent, and the validation summary.")
+        return
+
+    spectrum = result.spectrum
+    metrics = st.columns(5)
+    metrics[0].metric("Mean epsilon'", f"{spectrum.epsilon_prime.mean():.3f}")
+    metrics[1].metric("Mean epsilon''", f"{spectrum.epsilon_double_prime.mean():.3f}")
+    metrics[2].metric("Peak Loss Tangent", f"{spectrum.loss_tangent.max():.3f}")
+    metrics[3].metric("Peak Conductivity", f"{spectrum.conductivity_s_per_m.max():.3f} S/m")
+    metrics[4].metric("Confidence", f"{result.validation.confidence_label} ({result.validation.confidence_score:.0f}/120)")
+
+    st.plotly_chart(build_epsilon_plot(spectrum), use_container_width=True, key="phase5_results_epsilon")
+    result_columns = st.columns(2)
+    with result_columns[0]:
+        st.plotly_chart(build_loss_tangent_plot(spectrum), use_container_width=True, key="phase5_results_loss_tangent")
+    with result_columns[1]:
+        st.plotly_chart(build_nyquist_plot(spectrum), use_container_width=True, key="phase5_results_nyquist")
+
+    st.markdown("### Measurement Validation")
+    st.write(result.validation.summary)
+    st.dataframe(result.validation.to_dataframe(), use_container_width=True)
+
+    st.markdown("### Material Comparison")
+    materials = reference_material_payloads(material_db)
+    material_names = [str(item.get("display_name") or item.get("material_name")) for item in materials]
+    selected_reference = st.selectbox(
+        "Compare against reference material",
+        options=material_names,
+        index=material_names.index(st.session_state["selected_reference_material"]) if st.session_state.get("selected_reference_material") in material_names else 0,
+        key="results_reference_material_select",
+    )
+    st.session_state["selected_reference_material"] = selected_reference
+    selected_payload = next(
+        (
+            item
+            for item in materials
+            if str(item.get("display_name") or item.get("material_name")) == selected_reference
+        ),
+        materials[0],
+    )
+    comparison_plot = build_reference_overlay_plot(result, selected_payload)
+    st.plotly_chart(comparison_plot, use_container_width=True, key="phase5_results_reference_overlay")
+
+    comparison_frame = comparisons_to_frame(result.reference_comparisons)
+    if not comparison_frame.empty:
+        filtered = comparison_frame[comparison_frame["display_name"] == selected_reference]
+        if not filtered.empty:
+            top_row = filtered.iloc[0].to_dict()
+            comparison_metrics = st.columns(4)
+            comparison_metrics[0].metric("Similarity Score", f"{float(top_row['similarity_score']):.1f}")
+            comparison_metrics[1].metric("Delta epsilon'", f"{float(top_row['delta_epsilon_real']):.3f}")
+            comparison_metrics[2].metric("Delta epsilon''", f"{float(top_row['delta_epsilon_imag']):.3f}")
+            comparison_metrics[3].metric("Delta Conductivity", f"{float(top_row['delta_conductivity_s_per_m']):.4f} S/m")
+        st.dataframe(comparison_frame, use_container_width=True)
+
+    st.markdown("### Closest Material Matches")
+    match_frame = pd.DataFrame(result.identified_materials)
+    if not match_frame.empty:
+        st.dataframe(match_frame, use_container_width=True)
+
+    st.download_button(
+        "Download Permittivity CSV",
+        data=spectrum_to_csv_bytes(spectrum),
+        file_name="liteperm_permittivity_results.csv",
+        mime="text/csv",
+        key="phase5_results_download_csv",
+    )
+    render_figure_export(comparison_plot, "permittivity_reference_comparison")
+
+    if st.session_state["user_mode"] == "Advanced":
+        advanced_columns = st.columns(2)
+        with advanced_columns[0]:
+            st.plotly_chart(build_impedance_plot(spectrum), use_container_width=True, key="phase5_results_impedance")
+        with advanced_columns[1]:
+            st.plotly_chart(build_admittance_plot(spectrum), use_container_width=True, key="phase5_results_admittance")
+
+
+def render_research_mode_page(experiment_db: ExperimentDatabase, material_db: MaterialDatabase) -> None:
+    st.subheader("Research Mode")
+    measurement = st.session_state.get("measurement")
+    result = current_permittivity_result()
+    default_experiment_name = measurement.source_name if measurement is not None and measurement.source_name else "LitePerm Experiment"
+    metadata = build_research_metadata(default_experiment_name)
+
+    if measurement is None or result is None:
+        st.info("Load a material measurement and calculate permittivity before saving a research experiment.")
+    else:
+        if st.button("Save Experiment", key="phase5_save_experiment"):
+            try:
+                record = experiment_db.save_experiment(
+                    metadata=metadata,
+                    raw_measurement=measurement,
+                    processed_measurement=result.processed_measurement,
+                    spectrum=result.spectrum,
+                    calibration_profile=st.session_state["calibration_profile"],
+                    geometry_profile=st.session_state["geometry_profile"],
+                    inverse_result=st.session_state.get("inverse_result"),
+                    digital_twin=st.session_state.get("inverse_digital_twin"),
+                )
+                st.session_state["last_saved_experiment_id"] = record.experiment_id
+                st.success(f"Experiment saved as `{record.experiment_id}`")
+            except Exception as error:
+                st.error(f"Experiment save failed: {error}")
+
+    st.markdown("### Experiment Explorer")
+    search_columns = st.columns(4)
+    with search_columns[0]:
+        search_text = st.text_input("Search", value="", key="phase5_explorer_search")
+    with search_columns[1]:
+        sensor_filter = st.text_input("Filter by sensor type", value="", key="phase5_explorer_sensor")
+    with search_columns[2]:
+        project_filter = st.text_input("Filter by project", value="", key="phase5_explorer_project")
+    with search_columns[3]:
+        sort_by = st.selectbox("Sort by", ["created_at", "experiment_name", "project_name", "researcher"], key="phase5_explorer_sort")
+
+    experiment_rows = experiment_db.list_experiments(search=search_text, sensor_type=sensor_filter, project_name=project_filter, sort_by=sort_by)
+    if not experiment_rows:
+        st.caption("No experiments saved yet.")
+        return
+
+    explorer_frame = pd.DataFrame(experiment_rows)
+    st.dataframe(explorer_frame, use_container_width=True)
+    selected_experiment_id = st.selectbox(
+        "Selected experiment",
+        options=explorer_frame["experiment_id"].tolist(),
+        key="phase5_selected_experiment",
+    )
+    explorer_actions = st.columns(4)
+    with explorer_actions[0]:
+        if st.button("Open Selected Experiment", key="phase5_open_experiment"):
+            record = experiment_db.get_experiment(selected_experiment_id)
+            restore_experiment_result(record, material_db)
+            st.session_state["workflow_page"] = "Permittivity Results"
+            st.success(f"Loaded `{record.experiment_id}` into the measurement workspace.")
+            st.rerun()
+    with explorer_actions[1]:
+        if st.button("Duplicate Experiment", key="phase5_duplicate_experiment"):
+            duplicated = experiment_db.duplicate_experiment(selected_experiment_id)
+            st.success(f"Duplicated as `{duplicated.experiment_id}`")
+    with explorer_actions[2]:
+        archive_bytes = experiment_db.export_experiment(selected_experiment_id)
+        st.download_button(
+            "Export Experiment",
+            data=archive_bytes,
+            file_name=f"{selected_experiment_id}.zip",
+            mime="application/zip",
+            key="phase5_export_experiment",
+        )
+    with explorer_actions[3]:
+        if st.button("Delete Experiment", key="phase5_delete_experiment"):
+            experiment_db.delete_experiment(selected_experiment_id)
+            st.success(f"Deleted `{selected_experiment_id}`")
+            st.rerun()
+
+
+def render_advanced_rf_response_page() -> None:
+    st.markdown("### RF Response and Network View")
+    measurement = st.session_state.get("measurement")
+    spectrum = st.session_state.get("last_spectrum")
+    if measurement is None:
+        st.info("Capture or import a measurement first.")
+        return
+
+    render_measurement_summary(measurement)
+    figure_columns = st.columns(2)
+    with figure_columns[0]:
+        st.plotly_chart(build_magnitude_plot(measurement), use_container_width=True, key="advanced_rf_magnitude")
+        st.plotly_chart(build_phase_plot(measurement), use_container_width=True, key="advanced_rf_phase")
+    with figure_columns[1]:
+        smith_chart = build_smith_chart(measurement)
+        st.plotly_chart(smith_chart, use_container_width=True, key="advanced_rf_smith")
+        render_figure_export(smith_chart, "advanced_rf_smith")
+
+    if spectrum is not None:
+        extra_columns = st.columns(2)
+        with extra_columns[0]:
+            st.plotly_chart(build_impedance_plot(spectrum), use_container_width=True, key="advanced_rf_impedance")
+            st.plotly_chart(build_admittance_plot(spectrum), use_container_width=True, key="advanced_rf_admittance")
+        with extra_columns[1]:
+            st.plotly_chart(build_epsilon_plot(spectrum), use_container_width=True, key="advanced_rf_epsilon")
+            st.plotly_chart(build_loss_tangent_plot(spectrum), use_container_width=True, key="advanced_rf_loss")
+
+
+def render_advanced_live_capture_page(selected_plugin: str) -> None:
+    st.markdown("### Live Capture")
+    st.caption("Use this page for repeated live sweeps, RF preview, and fast transfer into the measurement workspace.")
+    render_connect_litevna_page()
+
+    live_controls = st.columns(3)
+    with live_controls[0]:
+        if st.button("Start Sweep", key="advanced_live_start"):
+            st.session_state["live_running"] = True
+    with live_controls[1]:
+        if st.button("Stop Sweep", key="advanced_live_stop"):
+            st.session_state["live_running"] = False
+    with live_controls[2]:
+        if st.button("Save Sweep", key="advanced_live_save") and st.session_state.get("live_last_result") is not None:
+            set_workspace_measurement(st.session_state["live_last_result"].raw_measurement)
+            st.session_state["processed_measurement"] = st.session_state["live_last_result"].processed_measurement
+            st.session_state["last_spectrum"] = st.session_state["live_last_result"].spectrum
+            st.success("Live sweep copied into the current analysis workspace.")
+
+    device = st.session_state.get("device")
+    live_placeholder = st.empty()
+    if st.session_state.get("live_running"):
+        if device is None:
+            st.error("Connect a device before starting a live sweep.")
+            st.session_state["live_running"] = False
+        else:
+            pipeline = AcquisitionPipeline(device)
+            for _ in range(3):
+                if not st.session_state["live_running"]:
+                    break
+                try:
+                    result = pipeline.run(
+                        config=active_sweep_config(),
+                        geometry=st.session_state["geometry_profile"],
+                        plugin_name=selected_plugin,
+                        calibration_profile=st.session_state["calibration_profile"],
+                        open_measurement=st.session_state.get("open_measurement"),
+                        short_measurement=st.session_state.get("short_measurement"),
+                        load_measurement=st.session_state.get("load_measurement"),
+                    )
+                    render_live_capture_results(result, live_placeholder)
+                    time.sleep(0.25)
+                except Exception as error:
+                    st.error(f"Live sweep failed: {error}")
+                    st.session_state["live_running"] = False
+                    break
+
+    if st.session_state.get("live_last_result") is not None:
+        with st.expander("Latest live measurement summary"):
+            st.json(st.session_state["live_last_result"].to_dict())
+
+
+def render_advanced_profiles_page(reference_names: list[str]) -> None:
+    st.markdown("### Calibration and Sensor Profiles")
+    profile_tabs = st.tabs(["Calibration Profiles", "Sensor Profiles"])
+
+    with profile_tabs[0]:
+        saved_profiles = list_saved_calibration_profiles()
+        selected_saved_profile = st.selectbox(
+            "Load saved calibration profile",
+            options=["None"] + [entry["path"] for entry in saved_profiles],
+            format_func=lambda item: "None" if item == "None" else Path(item).stem,
+            key="advanced_saved_calibration_profile",
+        )
+        if st.button("Load Selected Calibration Profile", key="advanced_load_calibration") and selected_saved_profile != "None":
+            st.session_state["calibration_profile"] = load_calibration_profile(selected_saved_profile)
+            st.success("Calibration profile loaded from library.")
+
+        updated_profile = calibration_editor(reference_names, st.session_state["calibration_profile"])
+        st.session_state["calibration_profile"] = updated_profile
+        calibration_actions = st.columns(2)
+        with calibration_actions[0]:
+            if st.button("Save Calibration Profile", key="advanced_save_calibration"):
+                saved_path = save_calibration_profile_to_library(updated_profile)
+                st.success(f"Saved to `{saved_path}`")
+        with calibration_actions[1]:
+            st.download_button(
+                "Download Calibration YAML",
+                data=calibration_profile_to_yaml(updated_profile),
+                file_name="calibration_profile.yaml",
+                mime="application/x-yaml",
+                key="advanced_download_calibration_yaml",
+            )
+
+    with profile_tabs[1]:
+        saved_geometries = list_saved_geometry_profiles()
+        selected_saved_geometry = st.selectbox(
+            "Load saved geometry profile",
+            options=["None"] + [entry["path"] for entry in saved_geometries],
+            format_func=lambda item: "None" if item == "None" else Path(item).stem,
+            key="advanced_saved_geometry_profile",
+        )
+        if st.button("Load Selected Geometry Profile", key="advanced_load_geometry") and selected_saved_geometry != "None":
+            st.session_state["geometry_profile"] = load_geometry_profile(selected_saved_geometry)
+            st.success("Geometry profile loaded from library.")
+
+        updated_geometry = geometry_editor(st.session_state["geometry_profile"])
+        st.session_state["geometry_profile"] = updated_geometry
+        geometry_actions = st.columns(2)
+        with geometry_actions[0]:
+            if st.button("Save Geometry Profile", key="advanced_save_geometry"):
+                saved_path = save_geometry_profile_to_library(updated_geometry)
+                st.success(f"Saved to `{saved_path}`")
+        with geometry_actions[1]:
+            st.download_button(
+                "Download Geometry YAML",
+                data=geometry_profile_to_yaml(updated_geometry),
+                file_name="geometry_profile.yaml",
+                mime="application/x-yaml",
+                key="advanced_download_geometry_yaml",
+            )
+
+
+def render_material_database_manager(material_db: MaterialDatabase, *, key_prefix: str) -> None:
+    search = st.text_input("Search materials", value="", key=f"{key_prefix}_materials_search")
+    materials_frame = pd.DataFrame(material_db.list_materials(search=search))
+    if not materials_frame.empty:
+        st.dataframe(materials_frame, use_container_width=True)
+
+    st.markdown("#### Add Material")
+    add_columns = st.columns(2)
+    with add_columns[0]:
+        material_name = st.text_input("Material Name", value="Custom Material", key=f"{key_prefix}_material_name")
+        category = st.text_input("Category", value="user", key=f"{key_prefix}_material_category")
+        epsilon_real = st.number_input("epsilon' reference", value=2.5, step=0.1, key=f"{key_prefix}_material_epsilon_real")
+        epsilon_imag = st.number_input("epsilon'' reference", value=0.05, step=0.01, key=f"{key_prefix}_material_epsilon_imag")
+        conductivity = st.number_input(
+            "Conductivity (S/m)",
+            value=0.001,
+            step=0.001,
+            format="%.6f",
+            key=f"{key_prefix}_material_conductivity",
+        )
+    with add_columns[1]:
+        loss_tangent = st.number_input("Loss tangent", value=0.02, step=0.01, key=f"{key_prefix}_material_loss_tangent")
+        source = st.text_input("Source", value="User entry", key=f"{key_prefix}_material_source")
+        references = st.text_input("References", value="", key=f"{key_prefix}_material_references")
+        notes = st.text_area("Notes", value="", key=f"{key_prefix}_material_notes")
+
+    if st.button("Add Material to Database", key=f"{key_prefix}_add_material"):
+        material_db.add_material(
+            {
+                "material_name": material_name,
+                "display_name": material_name,
+                "category": category,
+                "epsilon_real": float(epsilon_real),
+                "epsilon_imag": float(epsilon_imag),
+                "loss_tangent": float(loss_tangent),
+                "conductivity_s_per_m": float(conductivity),
+                "frequency_range_hz": [50e3, 6.3e9],
+                "source": source,
+                "references": references,
+                "notes": notes,
+            }
+        )
+        st.success(f"Added `{material_name}`")
+        st.rerun()
+
+
+def render_advanced_models_page(
+    plugins: dict[str, Any],
+    runnable_plugins: dict[str, Any],
+    experiment_db: ExperimentDatabase,
+) -> None:
+    st.markdown("### Modelling Registry")
+    plugin_cards = st.columns(max(1, min(3, len(plugins))))
+    for index, (plugin_name, plugin) in enumerate(plugins.items()):
+        with plugin_cards[index % len(plugin_cards)]:
+            metadata = plugin.metadata()
+            st.markdown(f"#### {metadata.get('display_name', plugin_name.title())}")
+            st.caption(metadata.get("validation_status", "unknown").title())
+            st.write(plugin.description())
+
+    measurement = st.session_state.get("measurement")
+    if measurement is not None:
+        comparison_rows: list[dict[str, Any]] = []
+        for plugin_name in runnable_plugins:
+            spectrum, _ = compute_material_spectrum(measurement, st.session_state["geometry_profile"], method=plugin_name)
+            comparison_rows.append(
+                {
+                    "Plugin": plugin_name,
+                    "Display Name": runnable_plugins[plugin_name].metadata().get("display_name", plugin_name.title()),
+                    "Validation": runnable_plugins[plugin_name].metadata().get("validation_status", "unknown"),
+                    "Mean epsilon'": float(spectrum.epsilon_prime.mean()),
+                    "Mean epsilon''": float(spectrum.epsilon_double_prime.mean()),
+                    "Peak loss tangent": float(spectrum.loss_tangent.max()),
+                }
+            )
+        st.dataframe(pd.DataFrame(comparison_rows), use_container_width=True)
+
+    experiment_rows = experiment_db.list_experiments()
+    if experiment_rows:
+        records = [experiment_db.get_experiment(row["experiment_id"]) for row in experiment_rows[:10]]
+        with st.expander("AI dataset preview"):
+            st.dataframe(build_experiment_dataset(records), use_container_width=True)
+
+
+def render_advanced_tools_page(
+    *,
+    selected_plugin: str,
+    reference_names: list[str],
+    forward_models: dict[str, type],
+    inverse_solvers: dict[str, type],
+    plugins: dict[str, Any],
+    runnable_plugins: dict[str, Any],
+    experiment_db: ExperimentDatabase,
+    material_db: MaterialDatabase,
+) -> None:
+    st.subheader("Advanced Tools")
+    if st.session_state["user_mode"] != "Advanced":
+        st.info("Switch to Advanced Mode in the sidebar to access RF views, live capture, inverse modelling, and full-wave simulation.")
+        return
+
+    advanced_tabs = st.tabs(
+        [
+            "RF Response",
+            "Live Capture",
+            "Profiles",
+            "Plugin Models",
+            "Full-Wave",
+            "Inverse",
+            "Materials",
+        ]
+    )
+    with advanced_tabs[0]:
+        render_advanced_rf_response_page()
+    with advanced_tabs[1]:
+        render_advanced_live_capture_page(selected_plugin)
+    with advanced_tabs[2]:
+        render_advanced_profiles_page(reference_names)
+    with advanced_tabs[3]:
+        render_advanced_models_page(plugins, runnable_plugins, experiment_db)
+    with advanced_tabs[4]:
+        render_full_wave_simulation_tab()
+    with advanced_tabs[5]:
+        render_inverse_modelling_tab(forward_models=forward_models, inverse_solvers=inverse_solvers)
+    with advanced_tabs[6]:
+        render_material_database_manager(material_db, key_prefix="advanced")
+
+
 def main() -> None:
     st.set_page_config(page_title="LitePerm", layout="wide")
     initialise_state()
@@ -1179,519 +2285,81 @@ def main() -> None:
     runnable_plugins = get_runnable_plugins()
     forward_models = discover_forward_models(include_full_wave=True)
     inverse_solvers = discover_inverse_solvers()
-    reference_materials = load_reference_materials()
     reference_names = list_reference_material_names()
 
     st.title("LitePerm")
-    st.caption("Research-grade LiteVNA dielectric spectroscopy, RF sensing, and experiment management platform")
+    st.caption("Open-source permittivity measurement platform for LiteVNA-based dielectric spectroscopy and material characterisation")
 
-    with st.sidebar:
-        st.header("Pipeline")
-        selected_plugin = st.selectbox(
-            "Transformation plugin",
-            options=list(runnable_plugins),
-            index=list(runnable_plugins).index("stuchly") if "stuchly" in runnable_plugins else 0,
-            format_func=lambda item: runnable_plugins[item].metadata().get("display_name", item.title()),
-        )
-        apply_calibration = st.checkbox("Apply loaded OSL calibration", value=True)
-        st.markdown("### Architecture")
-        st.write("Device -> Raw Measurement -> Calibration -> Transformation Plugin -> Permittivity -> Visualisation -> Database")
-        st.markdown("[Developer guide](docs/developer_guide.md)")
-        st.markdown("[Architecture diagram](docs/architecture.md)")
-        st.markdown("API launch: `uvicorn liteperm.api.app:create_api_app --factory`")
+    if not runnable_plugins:
+        st.error("No permittivity transformation plugins are available.")
+        return
+
+    selected_plugin = st.session_state["selected_permittivity_method"]
+    if selected_plugin not in runnable_plugins:
+        selected_plugin = "stuchly" if "stuchly" in runnable_plugins else list(runnable_plugins)[0]
+        st.session_state["selected_permittivity_method"] = selected_plugin
 
     apply_documentation_demo_state(selected_plugin)
 
-    tabs = st.tabs(
-        [
-            "Raw Measurement",
-            "Live Measurement",
-            "Calibration",
-            "Sensor Geometry",
-            "Material Properties",
-            "Full-Wave Simulation",
-            "Inverse Modelling",
-            "Advanced Modelling",
-            "Research Mode",
-            "Experiment Explorer",
-            "Material Database",
-        ]
-    )
-    (
-        raw_tab,
-        live_tab,
-        calibration_tab,
-        geometry_tab,
-        material_tab,
-        full_wave_tab,
-        inverse_tab,
-        modelling_tab,
-        research_tab,
-        explorer_tab,
-        materials_db_tab,
-    ) = tabs
-
-    apply_documentation_tab_selection()
-
-    with raw_tab:
-        st.subheader("Import S11 data")
-        uploader_column, example_column = st.columns([2, 1])
-        with uploader_column:
-            uploaded_file = st.file_uploader("Import Touchstone or CSV", type=["s1p", "csv"], key="dut_upload")
-            if uploaded_file is not None:
-                try:
-                    st.session_state["measurement"] = parse_uploaded_measurement(uploaded_file)
-                    st.session_state["processed_measurement"] = None
-                    st.session_state["last_spectrum"] = None
-                    reset_inverse_state()
-                    reset_full_wave_state()
-                except Exception as error:
-                    st.error(f"Failed to import measurement: {error}")
-        with example_column:
-            example_name = st.selectbox("Load example data", options=["None", "sample_touchstone.s1p", "sample_litevna.csv"])
-            if st.button("Load example dataset"):
-                load_example_dataset(example_name)
-
-        measurement = st.session_state["measurement"]
-        if measurement is None:
-            st.warning("Import a LiteVNA S11 file to begin.")
-        else:
-            render_measurement_summary(measurement)
-            st.write(f"Loaded source: `{measurement.source_name}`")
-            plot_column_1, plot_column_2 = st.columns(2)
-            with plot_column_1:
-                st.plotly_chart(build_magnitude_plot(measurement), use_container_width=True, key="raw_magnitude_chart")
-                st.plotly_chart(build_phase_plot(measurement), use_container_width=True, key="raw_phase_chart")
-            with plot_column_2:
-                smith_chart = build_smith_chart(measurement)
-                st.plotly_chart(smith_chart, use_container_width=True, key="raw_smith_chart")
-                render_figure_export(smith_chart, "raw_smith_chart")
-            with st.expander("Measurement table"):
-                st.dataframe(measurement.to_dataframe(), use_container_width=True)
-
-    with live_tab:
-        st.subheader("Live Measurement")
-        device_candidates = discover_device_candidates()
-        device_kind = st.selectbox(
-            "Device backend",
-            options=["litevna", "future_device"],
-            index=0 if st.session_state["device_kind"] == "litevna" else 1,
-            format_func=lambda item: "LiteVNA USB Serial" if item == "litevna" else "Simulated Future Device",
+    with st.sidebar:
+        st.header("LitePerm Workflow")
+        st.session_state["user_mode"] = st.radio(
+            "User Mode",
+            ["Basic", "Advanced"],
+            index=0 if st.session_state["user_mode"] == "Basic" else 1,
+            key="sidebar_user_mode",
         )
-
-        detected_ports = [candidate.port for candidate in device_candidates if candidate.port]
-        default_port = "SIMULATED" if device_kind == "future_device" else (detected_ports[0] if detected_ports else "")
-        selected_port = st.selectbox("Detected device port", options=detected_ports or [default_port], key="live_detected_port")
-        manual_port = st.text_input("Manual COM port override", value=st.session_state["device_port"] if device_kind == "litevna" else "SIMULATED")
-        port_to_use = manual_port.strip() or selected_port
-
-        control_columns = st.columns(4)
-        with control_columns[0]:
-            if st.button("Connect Device"):
-                try:
-                    message = connect_selected_device(device_kind, port_to_use)
-                    st.success(message)
-                except Exception as error:
-                    st.error(f"Connection failed: {error}")
-        with control_columns[1]:
-            if st.button("Test Connection"):
-                device = st.session_state.get("device")
-                if device is None:
-                    st.info("Connect a device first.")
-                else:
-                    st.success("Device responded correctly.") if device.test_connection() else st.error("Device did not respond.")
-        with control_columns[2]:
-            if st.button("Disconnect"):
-                disconnect_device()
-                st.info("Device disconnected.")
-        with control_columns[3]:
-            device = st.session_state.get("device")
-            if device is not None:
-                st.metric("Connected", device.get_device_info().name)
-            else:
-                st.metric("Connected", "No")
-
+        st.session_state["workflow_page"] = st.radio(
+            "Navigation",
+            WORKFLOW_PAGES,
+            index=WORKFLOW_PAGES.index(st.session_state["workflow_page"]) if st.session_state["workflow_page"] in WORKFLOW_PAGES else 0,
+            key="sidebar_workflow_page",
+        )
+        st.session_state["selected_permittivity_method"] = st.selectbox(
+            "Permittivity model",
+            options=list(runnable_plugins),
+            index=list(runnable_plugins).index(selected_plugin),
+            format_func=lambda item: runnable_plugins[item].metadata().get("display_name", item.title()),
+            key="sidebar_permittivity_method",
+        )
         device = st.session_state.get("device")
-        if device is not None:
-            st.json(device.get_device_info().to_dict())
+        st.markdown("### Instrument Status")
+        st.write(f"Device: `{device.get_device_info().name if device is not None else 'Not Connected'}`")
+        st.write(f"Sensor: `{workflow_sensor_label(st.session_state['geometry_profile'].sensor_type)}`")
+        st.write(f"Calibration: `{'Ready' if calibration_measurements_ready() else 'Pending'}`")
+        st.write(f"Result: `{'Available' if st.session_state.get('permittivity_result') else 'Waiting'}`")
+        st.markdown("### Objective")
+        st.write("Connect LiteVNA -> Calibrate -> Measure Material -> Calculate epsilon' and epsilon'' -> Save Experiment")
+        st.caption("Advanced RF analysis, inverse modelling, and full-wave simulation remain available under Advanced Tools.")
 
-        sweep_columns = st.columns(5)
-        with sweep_columns[0]:
-            start_frequency_hz = st.number_input("Start Frequency (Hz)", value=1e8, step=1e6, format="%.0f")
-        with sweep_columns[1]:
-            stop_frequency_hz = st.number_input("Stop Frequency (Hz)", value=6e9, step=1e6, format="%.0f")
-        with sweep_columns[2]:
-            points = int(st.number_input("Number of Points", value=401, step=10))
-        with sweep_columns[3]:
-            output_power = int(st.slider("Output Power", min_value=1, max_value=3, value=2))
-        with sweep_columns[4]:
-            sweep_speed = st.selectbox("Sweep Speed", ["slow", "normal", "fast", "demo"], index=1)
+    render_workflow_header()
 
-        live_config = SweepConfig(
-            start_frequency_hz=float(start_frequency_hz),
-            stop_frequency_hz=float(stop_frequency_hz),
-            points=points,
-            output_power=output_power,
-            sweep_speed=sweep_speed,
-            average_count=4 if sweep_speed != "fast" else 1,
+    current_page = st.session_state["workflow_page"]
+    if current_page == "Home":
+        render_home_page()
+    elif current_page == "Connect LiteVNA":
+        render_connect_litevna_page()
+    elif current_page == "Calibration Wizard":
+        render_calibration_wizard_page(reference_names)
+    elif current_page == "Sensor Setup":
+        render_sensor_setup_page()
+    elif current_page == "Measure Material":
+        render_measure_material_page(material_db, runnable_plugins)
+    elif current_page == "Permittivity Results":
+        render_permittivity_results_page(material_db)
+    elif current_page == "Research Mode":
+        render_research_mode_page(experiment_db, material_db)
+    elif current_page == "Advanced Tools":
+        render_advanced_tools_page(
+            selected_plugin=st.session_state["selected_permittivity_method"],
+            reference_names=reference_names,
+            forward_models=forward_models,
+            inverse_solvers=inverse_solvers,
+            plugins=plugins,
+            runnable_plugins=runnable_plugins,
+            experiment_db=experiment_db,
+            material_db=material_db,
         )
-
-        live_controls = st.columns(3)
-        with live_controls[0]:
-            if st.button("Start Sweep"):
-                st.session_state["live_running"] = True
-        with live_controls[1]:
-            if st.button("Stop Sweep"):
-                st.session_state["live_running"] = False
-        with live_controls[2]:
-            if st.button("Save Sweep") and st.session_state.get("live_last_result") is not None:
-                st.session_state["measurement"] = st.session_state["live_last_result"].raw_measurement
-                st.session_state["processed_measurement"] = st.session_state["live_last_result"].processed_measurement
-                st.session_state["last_spectrum"] = st.session_state["live_last_result"].spectrum
-                reset_inverse_state()
-                reset_full_wave_state()
-                st.success("Live sweep copied into the current analysis workspace.")
-
-        live_placeholder = st.empty()
-        if st.session_state["live_running"]:
-            if device is None:
-                st.error("Connect a device before starting a live sweep.")
-                st.session_state["live_running"] = False
-            else:
-                pipeline = AcquisitionPipeline(device)
-                for _ in range(3):
-                    if not st.session_state["live_running"]:
-                        break
-                    try:
-                        result = pipeline.run(
-                            config=live_config,
-                            geometry=st.session_state["geometry_profile"],
-                            plugin_name=selected_plugin,
-                            calibration_profile=st.session_state["calibration_profile"],
-                            open_measurement=st.session_state["open_measurement"],
-                            short_measurement=st.session_state["short_measurement"],
-                            load_measurement=st.session_state["load_measurement"],
-                        )
-                        render_live_capture_results(result, live_placeholder)
-                        time.sleep(0.25)
-                    except Exception as error:
-                        st.error(f"Live sweep failed: {error}")
-                        st.session_state["live_running"] = False
-                        break
-
-        if st.session_state.get("live_last_result") is not None:
-            with st.expander("Latest live measurement summary"):
-                st.json(st.session_state["live_last_result"].to_dict())
-
-    with calibration_tab:
-        st.subheader("Open / Short / Load calibration")
-        uploaders = st.columns(3)
-        calibration_keys = [
-            ("open_measurement", "Open standard", "open_upload"),
-            ("short_measurement", "Short standard", "short_upload"),
-            ("load_measurement", "Load standard", "load_upload"),
-        ]
-        for column, (state_key, label, upload_key) in zip(uploaders, calibration_keys, strict=True):
-            with column:
-                uploaded_standard = st.file_uploader(label, type=["s1p", "csv"], key=upload_key)
-                if uploaded_standard is not None:
-                    try:
-                        st.session_state[state_key] = parse_uploaded_measurement(uploaded_standard)
-                        st.success(f"{label} loaded")
-                    except Exception as error:
-                        st.error(f"{label} import failed: {error}")
-
-        saved_profiles = list_saved_calibration_profiles()
-        if saved_profiles:
-            selected_saved_calibration = st.selectbox(
-                "Load saved calibration profile",
-                options=["None"] + [entry["path"] for entry in saved_profiles],
-                format_func=lambda item: "None" if item == "None" else Path(item).stem,
-            )
-            if st.button("Load selected calibration profile") and selected_saved_calibration != "None":
-                st.session_state["calibration_profile"] = load_calibration_profile(selected_saved_calibration)
-                st.success("Calibration profile loaded from library.")
-
-        calibration_profile = calibration_editor(reference_names, st.session_state["calibration_profile"])
-        st.session_state["calibration_profile"] = calibration_profile
-
-        action_columns = st.columns(2)
-        with action_columns[0]:
-            if st.button("Save calibration profile to library"):
-                saved_path = save_calibration_profile_to_library(calibration_profile)
-                st.success(f"Saved to `{saved_path}`")
-        with action_columns[1]:
-            st.download_button(
-                "Download calibration YAML",
-                data=calibration_profile_to_yaml(calibration_profile),
-                file_name="calibration_profile.yaml",
-                mime="application/x-yaml",
-            )
-
-        with st.expander("Reference material library"):
-            st.dataframe(pd.DataFrame(reference_materials).T, use_container_width=True)
-
-    with geometry_tab:
-        st.subheader("Sensor geometry")
-        saved_geometries = list_saved_geometry_profiles()
-        if saved_geometries:
-            selected_saved_geometry = st.selectbox(
-                "Load saved geometry profile",
-                options=["None"] + [entry["path"] for entry in saved_geometries],
-                format_func=lambda item: "None" if item == "None" else Path(item).stem,
-            )
-            if st.button("Load selected geometry profile") and selected_saved_geometry != "None":
-                st.session_state["geometry_profile"] = load_geometry_profile(selected_saved_geometry)
-                st.success("Geometry profile loaded from library.")
-
-        updated_geometry = geometry_editor(st.session_state["geometry_profile"])
-        st.session_state["geometry_profile"] = updated_geometry
-
-        sensor_model = build_sensor_model(
-            updated_geometry,
-            calibration=st.session_state["calibration_profile"],
-            frequency_range_hz=(
-                float(st.session_state["measurement"].frequency_hz.min()),
-                float(st.session_state["measurement"].frequency_hz.max()),
-            )
-            if st.session_state["measurement"] is not None
-            else (1e6, 6.3e9),
-        )
-        st.json(sensor_model.summary())
-
-        geometry_actions = st.columns(2)
-        with geometry_actions[0]:
-            if st.button("Save geometry profile to library"):
-                saved_path = save_geometry_profile_to_library(updated_geometry)
-                st.success(f"Saved to `{saved_path}`")
-        with geometry_actions[1]:
-            st.download_button(
-                "Download geometry YAML",
-                data=geometry_profile_to_yaml(updated_geometry),
-                file_name="geometry_profile.yaml",
-                mime="application/x-yaml",
-            )
-
-        st.code(geometry_profile_to_yaml(updated_geometry), language="yaml")
-
-    with material_tab:
-        st.subheader("Material properties")
-        measurement = st.session_state["measurement"]
-        if measurement is None:
-            st.warning("Import or capture a measurement before computing dielectric spectra.")
-        else:
-            spectrum, working_measurement = compute_current_spectrum(selected_plugin, apply_calibration)
-            if spectrum is None:
-                st.warning("No spectrum is available.")
-            else:
-                st.session_state["last_spectrum"] = spectrum
-                metrics = st.columns(4)
-                metrics[0].metric("Mean epsilon'", f"{spectrum.epsilon_prime.mean():.3f}")
-                metrics[1].metric("Mean epsilon''", f"{spectrum.epsilon_double_prime.mean():.3f}")
-                metrics[2].metric("Peak loss tangent", f"{spectrum.loss_tangent.max():.3f}")
-                metrics[3].metric("Peak conductivity", f"{spectrum.conductivity_s_per_m.max():.3f} S/m")
-                st.write(f"Working measurement: `{working_measurement.source_name or 'Imported measurement'}`")
-
-                epsilon_figure = build_epsilon_plot(spectrum)
-                st.plotly_chart(epsilon_figure, use_container_width=True, key="material_epsilon_chart")
-                lower_left, lower_right = st.columns(2)
-                with lower_left:
-                    st.plotly_chart(build_loss_tangent_plot(spectrum), use_container_width=True, key="material_loss_tangent_chart")
-                    st.plotly_chart(build_nyquist_plot(spectrum), use_container_width=True, key="material_nyquist_chart")
-                with lower_right:
-                    st.plotly_chart(build_impedance_plot(spectrum), use_container_width=True, key="material_impedance_chart")
-                    st.plotly_chart(build_admittance_plot(spectrum), use_container_width=True, key="material_admittance_chart")
-                    render_figure_export(epsilon_figure, "dielectric_spectrum")
-
-                st.download_button(
-                    "Download dielectric spectrum CSV",
-                    data=spectrum_to_csv_bytes(spectrum),
-                    file_name="liteperm_spectrum.csv",
-                    mime="text/csv",
-                )
-                with st.expander("Spectrum table"):
-                    st.dataframe(spectrum.to_dataframe(), use_container_width=True)
-
-    with full_wave_tab:
-        render_full_wave_simulation_tab()
-
-    with inverse_tab:
-        render_inverse_modelling_tab(forward_models=forward_models, inverse_solvers=inverse_solvers)
-
-    with modelling_tab:
-        st.subheader("Advanced Modelling")
-        plugin_cards = st.columns(min(3, len(plugins)))
-        for index, (plugin_name, plugin) in enumerate(plugins.items()):
-            with plugin_cards[index % len(plugin_cards)]:
-                metadata = plugin.metadata()
-                st.markdown(f"### {metadata.get('display_name', plugin_name.title())}")
-                st.caption(metadata.get("validation_status", "unknown").title())
-                st.write(plugin.description())
-                st.write(metadata.get("assumptions", ""))
-
-        measurement = st.session_state["measurement"]
-        if measurement is not None:
-            comparison_rows: list[dict[str, Any]] = []
-            for plugin_name in runnable_plugins:
-                spectrum, _ = compute_material_spectrum(measurement, st.session_state["geometry_profile"], method=plugin_name)
-                comparison_rows.append(
-                    {
-                        "Plugin": plugin_name,
-                        "Display Name": runnable_plugins[plugin_name].metadata().get("display_name", plugin_name.title()),
-                        "Validation": runnable_plugins[plugin_name].metadata().get("validation_status", "unknown"),
-                        "Mean epsilon'": float(spectrum.epsilon_prime.mean()),
-                        "Mean epsilon''": float(spectrum.epsilon_double_prime.mean()),
-                        "Peak loss tangent": float(spectrum.loss_tangent.max()),
-                    }
-                )
-            st.dataframe(pd.DataFrame(comparison_rows), use_container_width=True)
-
-        st.markdown("### Plugin Registry")
-        plugin_rows = []
-        for plugin_name, plugin in plugins.items():
-            metadata = plugin.metadata()
-            plugin_rows.append(
-                {
-                    "Plugin": plugin_name,
-                    "Implemented": metadata.get("implemented", True),
-                    "Validation": metadata.get("validation_status", "unknown"),
-                    "Family": metadata.get("family", ""),
-                    "Description": plugin.description(),
-                }
-            )
-        st.dataframe(pd.DataFrame(plugin_rows), use_container_width=True)
-
-        st.markdown("### AI Dataset Preview")
-        experiment_rows = experiment_db.list_experiments()
-        if experiment_rows:
-            records = [experiment_db.get_experiment(row["experiment_id"]) for row in experiment_rows[:10]]
-            st.dataframe(build_experiment_dataset(records), use_container_width=True)
-        else:
-            st.caption("Save experiments in Research Mode to build future ML datasets.")
-
-    with research_tab:
-        st.subheader("Research Mode")
-        measurement = st.session_state["measurement"]
-        spectrum = st.session_state["last_spectrum"]
-        default_experiment_name = measurement.source_name if measurement is not None and measurement.source_name else "LitePerm Experiment"
-        metadata = build_research_metadata(default_experiment_name)
-
-        if measurement is None or spectrum is None:
-            st.info("Compute or capture a measurement before saving a research experiment.")
-        else:
-            if st.button("Save Experiment"):
-                try:
-                    record = experiment_db.save_experiment(
-                        metadata=metadata,
-                        raw_measurement=measurement,
-                        processed_measurement=st.session_state.get("processed_measurement") or measurement,
-                        spectrum=spectrum,
-                        calibration_profile=st.session_state["calibration_profile"],
-                        geometry_profile=st.session_state["geometry_profile"],
-                        inverse_result=st.session_state.get("inverse_result"),
-                        digital_twin=st.session_state.get("inverse_digital_twin"),
-                    )
-                    st.session_state["last_saved_experiment_id"] = record.experiment_id
-                    st.success(f"Experiment saved as `{record.experiment_id}`")
-                except Exception as error:
-                    st.error(f"Experiment save failed: {error}")
-
-            if st.session_state.get("last_saved_experiment_id"):
-                record = experiment_db.get_experiment(st.session_state["last_saved_experiment_id"])
-                st.json(record.to_summary_dict())
-
-    with explorer_tab:
-        st.subheader("Experiment Explorer")
-        search_columns = st.columns(4)
-        with search_columns[0]:
-            search_text = st.text_input("Search", value="")
-        with search_columns[1]:
-            sensor_filter = st.text_input("Filter by sensor type", value="")
-        with search_columns[2]:
-            project_filter = st.text_input("Filter by project", value="")
-        with search_columns[3]:
-            sort_by = st.selectbox("Sort by", ["created_at", "experiment_name", "project_name", "researcher"])
-
-        experiment_rows = experiment_db.list_experiments(search=search_text, sensor_type=sensor_filter, project_name=project_filter, sort_by=sort_by)
-        if not experiment_rows:
-            st.caption("No saved experiments yet.")
-        else:
-            explorer_frame = pd.DataFrame(experiment_rows)
-            st.dataframe(explorer_frame, use_container_width=True)
-            experiment_options = explorer_frame["experiment_id"].tolist()
-            selected_experiment_id = st.selectbox("Open Previous Experiment", experiment_options)
-            explorer_actions = st.columns(4)
-            with explorer_actions[0]:
-                if st.button("Open Selected Experiment"):
-                    record = experiment_db.get_experiment(selected_experiment_id)
-                    st.session_state["measurement"] = record.raw_measurement
-                    st.session_state["processed_measurement"] = record.processed_measurement
-                    st.session_state["last_spectrum"] = record.spectrum
-                    st.session_state["calibration_profile"] = record.calibration_profile
-                    st.session_state["geometry_profile"] = record.geometry_profile
-                    st.session_state["inverse_result"] = record.inverse_result
-                    st.session_state["inverse_digital_twin"] = record.digital_twin
-                    st.session_state["inverse_sweep_result"] = None
-                    if record.digital_twin and record.digital_twin.get("layer_stack"):
-                        st.session_state["inverse_layer_stack"] = LayerStack.from_dict(record.digital_twin["layer_stack"])
-                    else:
-                        st.session_state["inverse_layer_stack"] = default_layer_stack(record.geometry_profile.sensor_type)
-                    st.success(f"Loaded `{record.experiment_id}` into the workspace.")
-            with explorer_actions[1]:
-                if st.button("Duplicate Experiment"):
-                    duplicated = experiment_db.duplicate_experiment(selected_experiment_id)
-                    st.success(f"Duplicated as `{duplicated.experiment_id}`")
-            with explorer_actions[2]:
-                archive_bytes = experiment_db.export_experiment(selected_experiment_id)
-                st.download_button(
-                    "Export Experiment",
-                    data=archive_bytes,
-                    file_name=f"{selected_experiment_id}.zip",
-                    mime="application/zip",
-                )
-            with explorer_actions[3]:
-                if st.button("Delete Experiment"):
-                    experiment_db.delete_experiment(selected_experiment_id)
-                    st.success(f"Deleted `{selected_experiment_id}`")
-                    st.rerun()
-
-    with materials_db_tab:
-        st.subheader("Material Database")
-        search = st.text_input("Search materials", value="")
-        materials_frame = pd.DataFrame(material_db.list_materials(search=search))
-        if not materials_frame.empty:
-            st.dataframe(materials_frame, use_container_width=True)
-
-        st.markdown("### Add Material")
-        add_columns = st.columns(2)
-        with add_columns[0]:
-            material_name = st.text_input("Material Name", value="Custom Material")
-            category = st.text_input("Category", value="user")
-            epsilon_real = st.number_input("epsilon' reference", value=2.5, step=0.1)
-            epsilon_imag = st.number_input("epsilon'' reference", value=0.05, step=0.01)
-            conductivity = st.number_input("Conductivity (S/m)", value=0.001, step=0.001, format="%.6f")
-        with add_columns[1]:
-            loss_tangent = st.number_input("Loss tangent", value=0.02, step=0.01)
-            source = st.text_input("Source", value="User entry")
-            references = st.text_input("References", value="")
-            notes = st.text_area("Notes", value="")
-        if st.button("Add Material to Database"):
-            material_db.add_material(
-                {
-                    "material_name": material_name,
-                    "category": category,
-                    "epsilon_real": float(epsilon_real),
-                    "epsilon_imag": float(epsilon_imag),
-                    "loss_tangent": float(loss_tangent),
-                    "conductivity_s_per_m": float(conductivity),
-                    "frequency_range_hz": [50e3, 6.3e9],
-                    "source": source,
-                    "references": references,
-                    "notes": notes,
-                }
-            )
-            st.success(f"Added `{material_name}`")
-            st.rerun()
 
 
 if __name__ == "__main__":

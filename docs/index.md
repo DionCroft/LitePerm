@@ -2,27 +2,28 @@
 
 <div class="lp-hero">
   <div>
-    <p class="lp-eyebrow">Open-source RF sensing platform</p>
-    <h1>Dielectric spectroscopy, inverse modelling, and LiteVNA research workflows in one place.</h1>
+    <p class="lp-eyebrow">Open-source permittivity measurement platform</p>
+    <h1>Connect LiteVNA, calibrate the sensor, measure the material, and calculate epsilon' and epsilon''.</h1>
     <p>
-      LitePerm turns LiteVNA S11 measurements into reproducible research outputs:
-      permittivity spectra, experiment archives, inverse electromagnetic estimates,
-      digital twins, and publication-ready figures.
+      LitePerm turns LiteVNA S11 measurements into guided dielectric spectroscopy workflows
+      with calibration, probe-centric setup, permittivity validation, material comparison,
+      experiment storage, and advanced modelling when you need it.
     </p>
     <div class="lp-button-row">
       <a class="md-button md-button--primary" href="getting_started.md">Get Started</a>
+      <a class="md-button" href="permittivity_measurement_guide.md">Permittivity Measurement Guide</a>
+      <a class="md-button" href="calibration_workflow.md">Calibration Workflow</a>
       <a class="md-button" href="quick_install_5_minutes.md">Quick Install</a>
       <a class="md-button" href="first_litevna_measurement_tutorial.md">First Measurement Tutorial</a>
       <a class="md-button" href="user_manual.md">User Manual</a>
-      <a class="md-button" href="web_demo.md">Try the Browser Demo</a>
       <a class="md-button" href="https://github.com/DionCroft/LitePerm">View on GitHub</a>
     </div>
   </div>
   <div class="lp-kpi-grid">
-    <div class="lp-kpi-card"><strong>Phase 4</strong><span>Full-wave solver integration, cache, and comparison workflows</span></div>
-    <div class="lp-kpi-card"><strong>LiteVNA-ready</strong><span>Touchstone, CSV, and USB serial workflows</span></div>
-    <div class="lp-kpi-card"><strong>Inverse engine</strong><span>Forward models, solvers, uncertainty, sensitivity</span></div>
-    <div class="lp-kpi-card"><strong>Research archive</strong><span>SQLite experiments, reports, metadata, YAML profiles</span></div>
+    <div class="lp-kpi-card"><strong>Phase 5</strong><span>Permittivity-first workflow with Basic and Advanced measurement modes</span></div>
+    <div class="lp-kpi-card"><strong>LiteVNA-ready</strong><span>USB serial capture, Touchstone import, CSV import</span></div>
+    <div class="lp-kpi-card"><strong>Validation aware</strong><span>Confidence scoring, reference comparison, material matching</span></div>
+    <div class="lp-kpi-card"><strong>Research archive</strong><span>SQLite experiments, project folders, YAML profiles, reports</span></div>
   </div>
 </div>
 
@@ -30,17 +31,17 @@
 
 <div class="grid cards" markdown>
 
--   :material-radio-tower: **RF sensing**
+-   :material-flask-outline: **Permittivity measurement**
 
-    Build workflows for resonant sensors, OECP systems, and lightweight VNA investigations.
+    Build a guided instrument workflow around calibration, probe setup, measurement, validation, and material comparison.
 
 -   :material-chart-bell-curve-cumulative: **Dielectric spectroscopy**
 
-    Convert measured S11 into impedance, admittance, conductivity, loss tangent, and dielectric spectra.
+    Convert measured S11 into conductivity, loss tangent, and complex permittivity across frequency.
 
 -   :material-function-variant: **Inverse electromagnetic modelling**
 
-    Estimate unknown material properties directly from measured RF responses using forward models and optimisers.
+    Move into Advanced Mode when you need forward models, inverse solvers, uncertainty analysis, or full-wave support.
 
 -   :material-hospital-box-outline: **Biomedical and materials research**
 
@@ -52,13 +53,14 @@
 
 ![LitePerm architecture diagram](images/architecture-diagram.svg)
 
-The core research pipeline is intentionally modular:
+The core LitePerm measurement pipeline is intentionally modular:
 
-1. Device or file import
-2. Calibration and profile management
-3. Network transforms and dielectric extraction
-4. Forward and inverse electromagnetic modelling
-5. Visualisation, experiment storage, and reporting
+1. Connect LiteVNA or import a sweep
+2. Run the calibration wizard
+3. Select the sensor geometry
+4. Calculate permittivity
+5. Validate and compare the result
+6. Save the experiment
 
 ## Screenshots
 
@@ -108,14 +110,15 @@ pip install -r requirements.txt
 streamlit run app.py
 ```
 
-If you want the fastest path to a first result, follow the [Quick Start guide](QuickStart.md).
+If you want the fastest path to a first result, follow the [Permittivity Measurement Guide](permittivity_measurement_guide.md) and the [Quick Start guide](QuickStart.md).
 
 ## Project Snapshot
 
 | Area | Current capability |
 | --- | --- |
 | Import | Touchstone `.s1p`, CSV, LiteVNA live acquisition |
-| Analysis | S11, phase, Smith chart, impedance, admittance, permittivity |
+| Measurement | Calibration wizard, sensor setup, permittivity validation, reference comparison |
+| Analysis | Permittivity, conductivity, loss tangent, plus advanced RF views when needed |
 | Modelling | Stuchly-style transforms, forward models, inverse solvers |
 | Simulation | openEMS adapter path, Meep scaffold, simulation cache, measured-vs-simulated overlays |
 | Storage | SQLite experiment database plus project archive folders |

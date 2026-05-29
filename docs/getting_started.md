@@ -11,18 +11,22 @@ LitePerm serves three main kinds of users:
 | Learn the whole system end to end | [User Manual](user_manual.md) |
 | Connect a LiteVNA and capture live data | [LiteVNA Setup](litevna_setup.md) |
 | Explore the project before installing Python | [Web Demo](web_demo.md) |
+| Learn the full measurement workflow | [Permittivity Measurement Guide](permittivity_measurement_guide.md) |
 
 ## Choose Your First Session
 
-### File-first workflow
+### Basic measurement workflow
 
-Use this if you already have a LiteVNA export or a Touchstone file.
+Use this if your goal is to measure permittivity as quickly and clearly as possible.
 
 1. Install LitePerm locally.
 2. Launch Streamlit.
-3. Import `examples/sample_touchstone.s1p` or your own file.
-4. Open `Material Properties` to inspect dielectric outputs.
-5. Save the result in `Research Mode`.
+3. Open `Connect LiteVNA` or import `examples/sample_touchstone.s1p`.
+4. Complete the `Calibration Wizard`.
+5. Open `Sensor Setup`.
+6. Open `Measure Material` and calculate permittivity.
+7. Review `Permittivity Results`.
+8. Save the result in `Research Mode`.
 
 ### Instrument-first workflow
 
@@ -30,19 +34,23 @@ Use this if you want direct USB capture from a LiteVNA-class device.
 
 1. Install LitePerm and USB serial dependencies.
 2. Connect your device and identify the COM port.
-3. Open `Live Measurement`.
+3. Open `Connect LiteVNA`.
 4. Configure the sweep and test the connection.
-5. Capture, review, and save the result.
+5. Run `Calibration Wizard`.
+6. Open `Measure Material`.
+7. Review `Permittivity Results`.
 
 ### Modelling-first workflow
 
 Use this if you want to estimate unknown material properties.
 
 1. Import or capture a measurement.
-2. Load the right geometry profile.
-3. Open `Inverse Modelling`.
-4. Define the layer stack.
-5. Run an optimiser and inspect the uncertainty outputs.
+2. Complete the calibration and sensor setup workflow first.
+3. Switch to `Advanced Mode`.
+4. Open `Advanced Tools`.
+5. Use `Inverse` or `Full-Wave`.
+6. Define the layer stack.
+7. Run an optimiser and inspect the uncertainty outputs.
 
 ## What Gets Installed
 
@@ -50,7 +58,8 @@ The main LitePerm application gives you:
 
 - Streamlit dashboard
 - FastAPI service
-- calibration and geometry profiles
+- calibration wizard and geometry profiles
+- permittivity validation and reference comparison
 - experiment storage
 - inverse modelling engine
 - browser documentation portal
@@ -58,8 +67,9 @@ The main LitePerm application gives you:
 ## What To Keep Open While Learning
 
 - [Installation Guide](installation_guide.md)
-- [Calibration Guide](calibration_guide.md)
-- [OECP Guide](oecp_guide.md)
+- [Permittivity Measurement Guide](permittivity_measurement_guide.md)
+- [Calibration Workflow](calibration_workflow.md)
+- [Probe Setup Guide](probe_setup_guide.md)
 - [Inverse Modelling Guide](inverse_modelling_guide.md)
 - [User Manual](user_manual.md)
 
@@ -69,4 +79,8 @@ For most users, the best first milestone is:
 
 > Import one S11 file, view the Smith chart, calculate permittivity, and save one experiment.
 
-That is the exact path covered in the [Quick Start guide](QuickStart.md).
+For most new users, a better first goal is:
+
+> Connect LiteVNA, run calibration, measure one material, review the confidence score, and save one experiment.
+
+That path is covered in the [Permittivity Measurement Guide](permittivity_measurement_guide.md) and the [Quick Start guide](QuickStart.md).

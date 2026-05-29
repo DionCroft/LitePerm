@@ -1,5 +1,5 @@
 site_name: LitePerm
-site_description: Open-source RF sensing, dielectric spectroscopy, and inverse electromagnetic modelling platform for LiteVNA workflows.
+site_description: Open-source permittivity measurement platform for LiteVNA-based dielectric spectroscopy, material characterisation, and inverse electromagnetic modelling.
 site_url: https://dioncroft.github.io/LitePerm/
 repo_url: https://github.com/DionCroft/LitePerm
 repo_name: DionCroft/LitePerm
@@ -98,7 +98,12 @@ nav:
       - First LiteVNA Measurement Tutorial: first_litevna_measurement_tutorial.md
       - User Manual: user_manual.md
   - Measurement Workflows:
-      - Calibration: calibration_guide.md
+      - Permittivity Measurement Guide: permittivity_measurement_guide.md
+      - Calibration Workflow: calibration_workflow.md
+      - Reference Materials Guide: reference_materials_guide.md
+      - Probe Setup Guide: probe_setup_guide.md
+      - Measurement Validation: measurement_validation.md
+      - Calibration Guide: calibration_guide.md
       - Patch Antenna Sensors: patch_antenna_guide.md
       - OECP Sensors: oecp_guide.md
       - Inverse Modelling: inverse_modelling_guide.md

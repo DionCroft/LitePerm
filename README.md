@@ -5,27 +5,34 @@
 </p>
 
 <p align="center">
-  <strong>Open-source RF sensing, dielectric spectroscopy, inverse electromagnetic modelling, and simulation-assisted material characterisation</strong>
+  <strong>Open-source permittivity measurement platform for LiteVNA-based dielectric spectroscopy, material characterisation, and advanced RF modelling</strong>
 </p>
 
 <p align="center">
-  LiteVNA • S11 Analysis • Permittivity Extraction • Inverse Modelling • Full-Wave Simulation • Research Data Management
+  LiteVNA | Calibration Wizard | Permittivity Measurement | Validation | Inverse Modelling | Full-Wave Simulation | Research Data Management
 </p>
 
 ---
 
 ## Overview
 
-LitePerm is an open-source Python platform for turning one-port RF measurements into usable sensing and material-characterisation workflows.
+LitePerm is an open-source Python platform focused on one primary outcome:
 
-It started as a LiteVNA dielectric spectroscopy dashboard and has grown into a modular research framework for:
+> Measure complex permittivity using LiteVNA hardware.
 
-- importing LiteVNA measurements
-- visualising S11, impedance, admittance, and Smith charts
-- estimating complex permittivity and conductivity
-- running inverse electromagnetic material estimation
-- storing experiments and metadata for research traceability
-- preparing for solver-backed and AI-assisted RF sensing workflows
+Phase 5 refactors LitePerm so it behaves more like a scientific instrument than a generic RF dashboard. The main workflow is now:
+
+`Connect LiteVNA -> Select Sensor -> Run Calibration -> Measure Material -> Calculate epsilon' and epsilon'' -> Save Experiment`
+
+LitePerm still includes the broader Phase 1 to Phase 4 RF and modelling stack, but the default user experience is now centred on:
+
+- LiteVNA-first measurement workflows
+- calibration-guided permittivity extraction
+- probe-centric sensor setup
+- validation-aware dielectric spectroscopy
+- reference-material comparison
+- research-grade experiment storage
+- advanced inverse and full-wave modelling when required
 
 LitePerm is designed for academic labs, engineering teams, postgraduate research, and collaborators who need a transparent alternative to closed VNA analysis software.
 
@@ -37,9 +44,15 @@ LitePerm currently includes implemented work from:
 - Phase 2: device integration, research mode, and experiment storage
 - Phase 3: inverse electromagnetic modelling
 - Phase 4: full-wave solver integration layer
+- Phase 5: plug-and-play permittivity measurement workflow
 
 Latest major capabilities:
 
+- Basic Mode and Advanced Mode
+- measurement-first dashboard navigation
+- calibration wizard with OSL and reference materials
+- permittivity validation with confidence scoring
+- reference-material comparison and material matching
 - Touchstone and CSV import
 - LiteVNA USB serial acquisition
 - plugin-based permittivity transforms
@@ -51,6 +64,24 @@ Latest major capabilities:
 
 ## What LitePerm Can Do
 
+### Permittivity Measurement Workflow
+
+- Start from a guided Home page
+- Connect LiteVNA and configure the sweep
+- Run a full calibration wizard
+- Select a sensor family and geometry profile
+- Capture or import the material measurement
+- Calculate complex permittivity as the primary output
+- Validate the result and compare against reference materials
+- Save the result into Research Mode
+
+### Basic and Advanced Modes
+
+- `Basic Mode` for technicians, students, and routine measurement workflows
+- `Advanced Mode` for RF engineers, sensor developers, and modelling work
+- Basic Mode keeps the interface focused on frequency, `epsilon'`, `epsilon''`, loss tangent, conductivity, and confidence
+- Advanced Mode exposes S11, Smith chart, impedance, admittance, inverse controls, and solver tools
+
 ### Measurement and Acquisition
 
 - Import Touchstone `.s1p` files
@@ -60,15 +91,6 @@ Latest major capabilities:
 - Capture live sweeps into the analysis workspace
 - Save measured sweeps into research experiments
 
-### RF and Network Analysis
-
-- Plot S11 magnitude
-- Plot S11 phase
-- Display Smith charts
-- Convert reflection coefficient to impedance
-- Convert reflection coefficient to admittance
-- Compare measured and predicted responses
-
 ### Dielectric Spectroscopy
 
 - Compute complex permittivity across frequency
@@ -77,6 +99,18 @@ Latest major capabilities:
 - Plot conductivity
 - Plot Nyquist responses
 - Export dielectric spectra to CSV
+- Validate measurement plausibility
+- Compare measured spectra with built-in reference materials
+- Identify closest materials using nearest-neighbour style matching
+
+### RF and Network Analysis
+
+- Plot S11 magnitude
+- Plot S11 phase
+- Display Smith charts
+- Convert reflection coefficient to impedance
+- Convert reflection coefficient to admittance
+- Compare measured and predicted responses
 
 ### Transformation Models
 
@@ -141,30 +175,24 @@ LitePerm is intentionally not locked to one external solver. The architecture is
 
 ## Dashboard Overview
 
-The Streamlit dashboard currently includes:
+The Streamlit dashboard now follows a measurement-first structure:
 
-1. `Raw Measurement`
-   Import Touchstone or CSV data and inspect raw S11 traces.
-2. `Live Measurement`
-   Connect to a LiteVNA device, configure a sweep, and capture live data.
-3. `Calibration`
-   Define OSL standards, choose reference materials, and save calibration profiles.
-4. `Sensor Geometry`
-   Edit and save geometry profiles for patch, OECP, and resonator workflows.
-5. `Material Properties`
-   Compute dielectric spectra and inspect impedance, admittance, loss tangent, and conductivity.
-6. `Full-Wave Simulation`
-   Configure solver-backed jobs, inspect solver status, reuse cached simulations, and compare measured versus simulated S11.
-7. `Inverse Modelling`
-   Estimate material properties from measured RF responses with analytical or full-wave-backed forward models.
-8. `Advanced Modelling`
-   Review transformation plugins and compare modelling outputs.
-9. `Research Mode`
-   Save full experiments with metadata, calibration, geometry, and inverse results.
-10. `Experiment Explorer`
-    Search, reopen, duplicate, export, and delete archived experiments.
-11. `Material Database`
-    Browse and extend the built-in material library.
+1. `Home`
+   Start from the instrument landing page and choose the next step in the measurement workflow.
+2. `Connect LiteVNA`
+   Detect the device, connect, test communication, and configure the sweep.
+3. `Calibration Wizard`
+   Capture or import Open, Short, Load, and reference materials before saving the calibration.
+4. `Sensor Setup`
+   Choose Open Ended Coax Probe, Patch Sensor, Microstrip Resonator, or Custom Sensor and edit the geometry profile.
+5. `Measure Material`
+   Capture the material measurement from LiteVNA or import a saved file, then calculate permittivity.
+6. `Permittivity Results`
+   Review `epsilon'`, `epsilon''`, conductivity, loss tangent, confidence, and reference-material comparisons.
+7. `Research Mode`
+   Save the experiment, search archived experiments, reopen previous measurements, and export projects.
+8. `Advanced Tools`
+   Access RF response plots, live capture, calibration/profile management, plugin inspection, full-wave simulation, inverse modelling, and the material database.
 
 ## Supported Use Cases
 
@@ -216,6 +244,18 @@ The dashboard is then available at:
 http://localhost:8501
 ```
 
+### Recommended First Measurement
+
+For the cleanest first result:
+
+1. Open `Connect LiteVNA`
+2. Complete `Calibration Wizard`
+3. Open `Sensor Setup`
+4. Open `Measure Material`
+5. Press `Calculate Permittivity`
+6. Review `Permittivity Results`
+7. Save the experiment in `Research Mode`
+
 ### Optional API
 
 ```powershell
@@ -238,6 +278,11 @@ Project website:
 Recommended starting points:
 
 - [Getting Started](docs/getting_started.md)
+- [Permittivity Measurement Guide](docs/permittivity_measurement_guide.md)
+- [Calibration Workflow](docs/calibration_workflow.md)
+- [Probe Setup Guide](docs/probe_setup_guide.md)
+- [Reference Materials Guide](docs/reference_materials_guide.md)
+- [Measurement Validation](docs/measurement_validation.md)
 - [Quick Install (5 Minutes)](docs/quick_install_5_minutes.md)
 - [First LiteVNA Measurement Tutorial](docs/first_litevna_measurement_tutorial.md)
 - [Windows 11 Installation Guide](docs/installation_windows_11.md)
@@ -259,136 +304,55 @@ Solver setup:
 - [openEMS Setup Guide](docs/openems_setup_guide.md)
 - [Meep Setup Guide](docs/meep_setup_guide.md)
 
-## Example Workflows
-
-### Workflow 1: Import and Inspect LiteVNA Data
-
-1. Open `Raw Measurement`.
-2. Load `examples/sample_touchstone.s1p` or `examples/sample_litevna.csv`.
-3. Inspect magnitude, phase, and Smith chart plots.
-
-### Workflow 2: Compute Dielectric Spectra
-
-1. Load a measurement.
-2. Open `Material Properties`.
-3. Choose the transform plugin in the sidebar.
-4. Review `epsilon'`, `epsilon''`, loss tangent, conductivity, impedance, and admittance.
-
-### Workflow 3: Run Inverse Modelling
-
-1. Load or capture a measurement.
-2. Choose a geometry profile.
-3. Open `Inverse Modelling`.
-4. Select a forward model and inverse solver.
-5. Choose the parameters to estimate.
-6. Run the estimation and inspect residuals, convergence, confidence intervals, and sensitivity plots.
-
-### Workflow 4: Use the Full-Wave Simulation Layer
-
-1. Open `Full-Wave Simulation`.
-2. Review solver availability and setup status.
-3. Define the material stack, sweep, and mesh settings.
-4. Run or reuse a cached simulation.
-5. Compare measured and simulated responses.
-
-### Workflow 5: Save a Research Experiment
-
-1. Load or capture data.
-2. Compute the dielectric spectrum.
-3. Optionally run inverse modelling.
-4. Open `Research Mode`.
-5. Enter metadata and save the experiment.
-
 ## Repository Structure
 
 ```text
 LitePerm/
 ├── app.py
-├── README.md
-├── CHANGELOG.md
-├── requirements.txt
-├── requirements-docs.txt
 ├── docs/
 ├── examples/
-├── profiles/
-├── Projects/
-├── tests/
-└── liteperm/
-    ├── acquisition/
-    ├── ai/
-    ├── api/
-    ├── calibration/
-    ├── database/
-    ├── devices/
-    ├── geometry/
-    ├── inverse/
-    ├── io/
-    ├── models/
-    ├── plugins/
-    ├── reports/
-    ├── sensors/
-    ├── solvers/
-    ├── synthetic/
-    ├── transform/
-    ├── uncertainty/
-    ├── utils/
-    └── visualisation/
+├── liteperm/
+│   ├── acquisition/
+│   ├── ai/
+│   ├── calibration/
+│   ├── database/
+│   ├── devices/
+│   ├── geometry/
+│   ├── inverse/
+│   ├── permittivity/
+│   ├── plugins/
+│   ├── sensors/
+│   ├── solvers/
+│   ├── synthetic/
+│   ├── transform/
+│   ├── utils/
+│   └── visualisation/
+└── tests/
 ```
 
-## Testing and Validation
+## Validation
 
-Run the test suite:
+Typical local validation commands:
 
 ```powershell
-python -m pytest -q
+.\.venv\Scripts\python.exe -c "import app; print('app-import-ok')"
+.\.venv\Scripts\python.exe -m pytest -q
+.\.venv\Scripts\python.exe -m mkdocs build --strict
 ```
 
-Build the documentation locally:
+## Roadmap Direction
 
-```powershell
-python -m mkdocs build --strict
-```
+LitePerm now prioritises:
 
-## Roadmap Snapshot
+- permittivity measurement accuracy
+- calibration quality
+- reference-material comparison
+- material characterisation
+- sensor development
+- research validation
 
-Completed:
-
-- Phase 1: dielectric spectroscopy platform
-- Phase 2: research platform and experiment management
-- Phase 3: inverse electromagnetic modelling
-- Phase 4: full-wave solver integration layer
-
-Planned next areas:
-
-- deeper solver automation
-- surrogate and physics-informed models
-- broader AI-assisted material classification
-- stronger digital twin synchronisation
-- additional resonator and biomedical sensing workflows
-
-## Changelog
-
-Recent project history is tracked in:
-
-- [CHANGELOG.md](CHANGELOG.md)
-- [docs/release_notes.md](docs/release_notes.md)
-
-## Citation
-
-If you use LitePerm in academic work, please include a citation to the project repository and release used in your study.
-
-See:
-
-- [CITATION.cff](CITATION.cff)
-- [Publications](docs/publications.md)
+Advanced modelling, inverse workflows, and full-wave solvers remain important, but they now support the central measurement mission rather than competing with it.
 
 ## License
 
-LitePerm is released under the MIT License.
-
-## Author
-
-**Dr Dion M. Mariyanayagam**
-
-Principal Lecturer in Electronics and Embedded Systems Engineering  
-London Metropolitan University
+MIT License.
