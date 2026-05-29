@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800">
+  <rect width="1280" height="800" rx="28" fill="#071827"/>
+  <rect x="48" y="48" width="1184" height="704" rx="24" fill="#0f172a" stroke="#14b8a6" stroke-width="3"/>
+  <text x="74" y="86" fill="#f8fafc" font-size="34" font-family="IBM Plex Sans, Arial, sans-serif" font-weight="700">Research Mode</text>
+  <rect x="84" y="132" width="1112" height="560" rx="20" fill="#0b2233"/>
+  <rect x="116" y="176" width="500" height="64" rx="14" fill="#10253a"/>
+  <rect x="116" y="262" width="500" height="64" rx="14" fill="#10253a"/>
+  <rect x="116" y="348" width="500" height="64" rx="14" fill="#10253a"/>
+  <rect x="116" y="434" width="500" height="64" rx="14" fill="#10253a"/>
+  <rect x="642" y="176" width="522" height="322" rx="16" fill="#10253a"/>
+  <rect x="642" y="530" width="240" height="92" rx="16" fill="#14b8a6"/>
+  <rect x="924" y="530" width="240" height="92" rx="16" fill="#f59e0b"/>
+  <text x="142" y="214" fill="#94a3b8" font-size="18" font-family="IBM Plex Sans, Arial, sans-serif">Experiment name, researcher, project, environment</text>
+  <text x="142" y="300" fill="#94a3b8" font-size="18" font-family="IBM Plex Sans, Arial, sans-serif">Calibration, geometry, material under test</text>
+  <text x="142" y="386" fill="#94a3b8" font-size="18" font-family="IBM Plex Sans, Arial, sans-serif">Tags, notes, traceability metadata</text>
+  <text x="142" y="472" fill="#94a3b8" font-size="18" font-family="IBM Plex Sans, Arial, sans-serif">Structured export into Projects/ archives</text>
+</svg>

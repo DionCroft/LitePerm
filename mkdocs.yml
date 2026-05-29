@@ -1,0 +1,120 @@
+site_name: LitePerm
+site_description: Open-source RF sensing, dielectric spectroscopy, and inverse electromagnetic modelling platform for LiteVNA workflows.
+site_url: https://dioncroft.github.io/LitePerm/
+repo_url: https://github.com/DionCroft/LitePerm
+repo_name: DionCroft/LitePerm
+edit_uri: edit/main/docs/
+docs_dir: docs
+strict: true
+
+theme:
+  name: material
+  language: en
+  font:
+    text: IBM Plex Sans
+    code: IBM Plex Mono
+  icon:
+    repo: fontawesome/brands/github
+    edit: material/pencil
+    view: material/eye
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - navigation.indexes
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.action.edit
+    - content.action.view
+    - toc.follow
+  palette:
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      accent: amber
+      toggle:
+        icon: material/weather-night
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      accent: amber
+      toggle:
+        icon: material/weather-sunny
+        name: Switch to system preference
+
+plugins:
+  - search
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - footnotes
+  - md_in_html
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+
+extra_css:
+  - assets/stylesheets/extra.css
+
+extra_javascript:
+  - https://cdn.plot.ly/plotly-2.35.2.min.js
+  - assets/javascripts/liteperm-demo.js
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/DionCroft/LitePerm
+    - icon: material/web
+      link: https://dioncroft.github.io/LitePerm/
+
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Overview: getting_started.md
+      - Installation: installation_guide.md
+      - Windows 11: installation_windows_11.md
+      - Ubuntu: installation_ubuntu.md
+      - WSL2: installation_wsl2.md
+      - LiteVNA Setup: litevna_setup.md
+      - Quick Start: QuickStart.md
+  - Measurement Workflows:
+      - Calibration: calibration_guide.md
+      - Patch Antenna Sensors: patch_antenna_guide.md
+      - OECP Sensors: oecp_guide.md
+      - Inverse Modelling: inverse_modelling_guide.md
+      - Research Mode: research_mode_guide.md
+      - Live Measurement: live_measurement_guide.md
+      - Research Showcase: research_showcase.md
+  - Browser Tools:
+      - Web Demo: web_demo.md
+      - Browser Connectivity: BrowserConnectivity.md
+  - Reference:
+      - Architecture: architecture.md
+      - API Documentation: api_guide.md
+      - Developer Documentation: developer_guide.md
+      - Development Guide: development_guide.md
+      - Downloads: downloads.md
+      - Release Notes: release_notes.md
+      - Roadmap: roadmap.md
+      - FAQ: faq.md
+      - Publications: publications.md
+      - Contributing: contributing.md
+
+copyright: Copyright 2026 LitePerm contributors. Released under the MIT License.

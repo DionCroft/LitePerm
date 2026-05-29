@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 640" role="img" aria-labelledby="title desc">
+  <title id="title">LitePerm architecture diagram</title>
+  <desc id="desc">A stylised diagram showing device input, calibration, modelling, visualisation, and storage stages.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#083344"/>
+    </linearGradient>
+    <linearGradient id="accent" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#14b8a6"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="640" rx="32" fill="url(#bg)"/>
+  <text x="60" y="78" fill="#f8fafc" font-size="34" font-family="IBM Plex Sans, Arial, sans-serif" font-weight="700">LitePerm Architecture</text>
+  <text x="60" y="112" fill="#cbd5e1" font-size="18" font-family="IBM Plex Sans, Arial, sans-serif">Measurement to modelling to research archive</text>
+  <g fill="#0b1220" stroke="url(#accent)" stroke-width="3">
+    <rect x="60" y="180" width="170" height="92" rx="22"/>
+    <rect x="280" y="180" width="170" height="92" rx="22"/>
+    <rect x="500" y="180" width="170" height="92" rx="22"/>
+    <rect x="720" y="180" width="170" height="92" rx="22"/>
+    <rect x="940" y="180" width="170" height="92" rx="22"/>
+    <rect x="280" y="360" width="220" height="92" rx="22"/>
+    <rect x="560" y="360" width="220" height="92" rx="22"/>
+    <rect x="840" y="360" width="220" height="92" rx="22"/>
+  </g>
+  <g fill="#f8fafc" font-family="IBM Plex Sans, Arial, sans-serif" font-size="22" font-weight="700" text-anchor="middle">
+    <text x="145" y="220">LiteVNA / Files</text>
+    <text x="365" y="220">Calibration</text>
+    <text x="585" y="220">Transforms</text>
+    <text x="805" y="220">Inverse Models</text>
+    <text x="1025" y="220">Visualisation</text>
+    <text x="390" y="400">Experiment Database</text>
+    <text x="670" y="400">Digital Twin</text>
+    <text x="950" y="400">Reports + Pages</text>
+  </g>
+  <g fill="#cbd5e1" font-family="IBM Plex Sans, Arial, sans-serif" font-size="16" text-anchor="middle">
+    <text x="145" y="246">Touchstone, CSV, USB serial</text>
+    <text x="365" y="246">OSL + references + YAML</text>
+    <text x="585" y="246">S11, Z, Y, epsilon</text>
+    <text x="805" y="246">Forward + inverse solvers</text>
+    <text x="1025" y="246">Dashboards, plots, exports</text>
+    <text x="390" y="426">SQLite, archives, metadata</text>
+    <text x="670" y="426">Layer stack, sensor, state</text>
+    <text x="950" y="426">Docs, downloads, publication assets</text>
+  </g>
+  <g stroke="#f59e0b" stroke-width="4" fill="none" stroke-linecap="round">
+    <path d="M230 226 H280"/>
+    <path d="M450 226 H500"/>
+    <path d="M670 226 H720"/>
+    <path d="M890 226 H940"/>
+    <path d="M365 272 V332 H390"/>
+    <path d="M585 272 V332 H670"/>
+    <path d="M1025 272 V332 H950"/>
+  </g>
+</svg>

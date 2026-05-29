@@ -1,54 +1,46 @@
-# Developer Guide
+# Developer Documentation
 
-## Architecture
+## High-Level Architecture
 
-LitePerm is organised as a modular S-parameter processing pipeline:
+LitePerm is organised as a modular RF sensing and modelling stack:
 
 1. `liteperm.devices`
 2. `liteperm.acquisition`
 3. `liteperm.calibration`
 4. `liteperm.plugins`
 5. `liteperm.transform`
-6. `liteperm.database`
-7. `liteperm.reports`
-8. `liteperm.ai`
-9. `liteperm.api`
-10. `liteperm.visualisation`
+6. `liteperm.inverse`
+7. `liteperm.database`
+8. `liteperm.reports`
+9. `liteperm.ai`
+10. `liteperm.api`
+11. `liteperm.visualisation`
 
-## Extending the inversion engine
+## Extension Points
 
-- Add a new plugin module under `liteperm/plugins/builtin/` or a future plugin package.
-- Implement the `TransformationPlugin` interface.
-- The discovery manager will pick it up automatically.
+### Transformation plugins
 
-## Live acquisition
+- implement the `TransformationPlugin` interface
+- place the plugin in a discoverable package
+- LitePerm registers it automatically without hard-coded wiring
 
-- Device classes implement a common `DeviceBase` contract.
-- `AcquisitionPipeline` keeps hardware capture, calibration, and transform stages separately testable.
-- The `FutureDevice` backend exists to validate UI and database workflows without hardware.
+### Forward models and inverse solvers
 
-## Research storage
+- implement the shared contracts
+- keep simulation, optimisation, and uncertainty steps independently testable
+- return serialisable outputs so experiments can be reopened later
 
-- `ExperimentDatabase` stores metadata and serialised measurement payloads in SQLite.
-- A matching on-disk project archive is created for raw data, processed data, plots, reports, and YAML metadata.
-- `MaterialDatabase` seeds the built-in dielectric library and accepts user additions.
+## Storage Model
 
-## Testing
+- `ExperimentDatabase` stores measurements, spectra, metadata, inverse results, and digital twins in SQLite
+- `Projects/` mirrors the SQLite record with files for raw data, processed data, plots, reports, and YAML snapshots
+- `MaterialDatabase` seeds the reference library and supports user additions
 
-```bash
-pytest --cov=liteperm --cov-report=term-missing
-```
-
-## API
+## Useful Commands
 
 ```bash
+pytest -q
+mkdocs build --strict
 uvicorn liteperm.api.app:create_api_app --factory
+streamlit run app.py
 ```
-
-## Future roadmap
-
-- Live LiteVNA acquisition
-- Batch processing
-- Material comparison mode
-- ML-backed material classification and anomaly detection
-

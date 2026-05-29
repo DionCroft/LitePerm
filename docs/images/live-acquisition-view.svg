@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800">
+  <rect width="1280" height="800" rx="28" fill="#071827"/>
+  <rect x="48" y="48" width="1184" height="704" rx="24" fill="#0f172a" stroke="#14b8a6" stroke-width="3"/>
+  <text x="74" y="86" fill="#f8fafc" font-size="34" font-family="IBM Plex Sans, Arial, sans-serif" font-weight="700">Live LiteVNA Acquisition</text>
+  <rect x="78" y="126" width="1118" height="120" rx="18" fill="#10253a"/>
+  <rect x="78" y="274" width="540" height="390" rx="18" fill="#0b2233"/>
+  <rect x="656" y="274" width="540" height="186" rx="18" fill="#0b2233"/>
+  <rect x="656" y="478" width="540" height="186" rx="18" fill="#0b2233"/>
+  <path d="M108 184 H1148" stroke="#14b8a6" stroke-width="8"/>
+  <polyline points="108,612 198,582 288,552 378,520 468,504 558,482" fill="none" stroke="#14b8a6" stroke-width="8"/>
+  <circle cx="926" cy="366" r="68" fill="none" stroke="#f59e0b" stroke-width="8"/>
+  <path d="M858 366 C880 320 972 320 994 366 C972 412 880 412 858 366" fill="none" stroke="#14b8a6" stroke-width="6"/>
+  <path d="M690 592 H1140" stroke="#38bdf8" stroke-width="8"/>
+</svg>

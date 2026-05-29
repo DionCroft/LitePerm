@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800">
+  <rect width="1280" height="800" rx="28" fill="#071827"/>
+  <rect x="34" y="34" width="1212" height="732" rx="24" fill="#0f172a" stroke="#14b8a6" stroke-width="3"/>
+  <rect x="68" y="92" width="250" height="610" rx="18" fill="#10253a"/>
+  <rect x="346" y="92" width="860" height="170" rx="18" fill="#0b2233"/>
+  <rect x="346" y="290" width="418" height="190" rx="18" fill="#0b2233"/>
+  <rect x="788" y="290" width="418" height="190" rx="18" fill="#0b2233"/>
+  <rect x="346" y="508" width="860" height="194" rx="18" fill="#0b2233"/>
+  <text x="68" y="64" fill="#f8fafc" font-size="34" font-family="IBM Plex Sans, Arial, sans-serif" font-weight="700">Dashboard Overview</text>
+  <text x="92" y="148" fill="#cbd5e1" font-size="22" font-family="IBM Plex Sans, Arial, sans-serif">Sidebar Controls</text>
+  <text x="372" y="138" fill="#f8fafc" font-size="26" font-family="IBM Plex Sans, Arial, sans-serif">LitePerm Streamlit Dashboard</text>
+  <text x="372" y="176" fill="#94a3b8" font-size="18" font-family="IBM Plex Sans, Arial, sans-serif">Upload, calibrate, model, and archive RF sensing experiments.</text>
+  <circle cx="1060" cy="390" r="82" fill="none" stroke="#f59e0b" stroke-width="8"/>
+  <path d="M978 390 C1008 340 1112 340 1142 390 C1112 440 1008 440 978 390" fill="none" stroke="#14b8a6" stroke-width="6"/>
+  <path d="M390 350 H718" stroke="#14b8a6" stroke-width="6"/>
+  <path d="M390 386 H690" stroke="#14b8a6" stroke-width="6"/>
+  <path d="M390 422 H640" stroke="#f59e0b" stroke-width="6"/>
+  <path d="M386 560 H1174" stroke="#14b8a6" stroke-width="8"/>
+  <path d="M386 612 H1088" stroke="#f59e0b" stroke-width="8"/>
+  <path d="M386 662 H1138" stroke="#38bdf8" stroke-width="8"/>
+</svg>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800">
+  <rect width="1280" height="800" rx="28" fill="#071827"/>
+  <rect x="48" y="48" width="1184" height="704" rx="24" fill="#0f172a" stroke="#14b8a6" stroke-width="3"/>
+  <text x="74" y="86" fill="#f8fafc" font-size="34" font-family="IBM Plex Sans, Arial, sans-serif" font-weight="700">Permittivity Results</text>
+  <path d="M126 630 H1170" stroke="#334155" stroke-width="3"/>
+  <path d="M126 176 V630" stroke="#334155" stroke-width="3"/>
+  <polyline points="140,568 250,520 360,442 470,396 580,372 690,346 800,322 910,290 1020,254 1130,236" fill="none" stroke="#0284c7" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="140,540 250,530 360,514 470,476 580,438 690,402 800,374 910,354 1020,344 1130,334" fill="none" stroke="#ef4444" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="860" y="126" width="268" height="132" rx="18" fill="#0b2233"/>
+  <text x="890" y="168" fill="#f8fafc" font-size="20" font-family="IBM Plex Sans, Arial, sans-serif">epsilon' and epsilon''</text>
+  <text x="890" y="204" fill="#94a3b8" font-size="18" font-family="IBM Plex Sans, Arial, sans-serif">Interactive spectra for dielectric analysis</text>
+  <text x="890" y="236" fill="#94a3b8" font-size="18" font-family="IBM Plex Sans, Arial, sans-serif">CSV + figure export ready</text>
+</svg>

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800">
+  <rect width="1280" height="800" rx="28" fill="#071827"/>
+  <rect x="48" y="48" width="1184" height="704" rx="24" fill="#0f172a" stroke="#14b8a6" stroke-width="3"/>
+  <text x="74" y="86" fill="#f8fafc" font-size="34" font-family="IBM Plex Sans, Arial, sans-serif" font-weight="700">Smith Chart View</text>
+  <circle cx="640" cy="428" r="224" fill="none" stroke="#64748b" stroke-width="4" stroke-dasharray="10 10"/>
+  <circle cx="640" cy="428" r="150" fill="none" stroke="#1e293b" stroke-width="2"/>
+  <circle cx="640" cy="428" r="78" fill="none" stroke="#1e293b" stroke-width="2"/>
+  <path d="M416 428 H864" stroke="#1e293b" stroke-width="2"/>
+  <path d="M640 204 V652" stroke="#1e293b" stroke-width="2"/>
+  <polyline points="440,486 518,448 602,404 678,370 760,382 824,424" fill="none" stroke="#14b8a6" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="824" cy="424" r="12" fill="#f59e0b"/>
+  <text x="914" y="284" fill="#cbd5e1" font-size="20" font-family="IBM Plex Sans, Arial, sans-serif">Interactive comparison of reflection trajectories</text>
+  <rect x="870" y="338" width="264" height="168" rx="18" fill="#0b2233"/>
+  <text x="900" y="384" fill="#f8fafc" font-size="20" font-family="IBM Plex Sans, Arial, sans-serif">Gamma trace</text>
+  <text x="900" y="418" fill="#94a3b8" font-size="18" font-family="IBM Plex Sans, Arial, sans-serif">Measured vs predicted reflection curves</text>
+  <text x="900" y="452" fill="#94a3b8" font-size="18" font-family="IBM Plex Sans, Arial, sans-serif">Useful for resonance and mismatch studies</text>
+</svg>

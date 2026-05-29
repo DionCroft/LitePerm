@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800">
+  <rect width="1280" height="800" rx="28" fill="#071827"/>
+  <rect x="48" y="48" width="1184" height="704" rx="24" fill="#0f172a" stroke="#14b8a6" stroke-width="3"/>
+  <text x="74" y="86" fill="#f8fafc" font-size="34" font-family="IBM Plex Sans, Arial, sans-serif" font-weight="700">Inverse Modelling Workspace</text>
+  <rect x="78" y="126" width="304" height="566" rx="18" fill="#10253a"/>
+  <rect x="412" y="126" width="780" height="220" rx="18" fill="#0b2233"/>
+  <rect x="412" y="370" width="378" height="152" rx="18" fill="#0b2233"/>
+  <rect x="814" y="370" width="378" height="152" rx="18" fill="#0b2233"/>
+  <rect x="412" y="546" width="780" height="146" rx="18" fill="#0b2233"/>
+  <text x="108" y="168" fill="#f8fafc" font-size="22" font-family="IBM Plex Sans, Arial, sans-serif">Solver controls</text>
+  <text x="438" y="168" fill="#f8fafc" font-size="22" font-family="IBM Plex Sans, Arial, sans-serif">Measured vs predicted response</text>
+  <polyline points="454,284 560,256 660,248 758,266 860,278 960,264 1060,230 1148,214" fill="none" stroke="#14b8a6" stroke-width="8"/>
+  <polyline points="454,294 560,278 660,262 758,250 860,256 960,274 1060,286 1148,276" fill="none" stroke="#f59e0b" stroke-width="8"/>
+  <path d="M442 456 H758" stroke="#38bdf8" stroke-width="8"/>
+  <path d="M442 486 H730" stroke="#14b8a6" stroke-width="8"/>
+  <path d="M842 432 H1162" stroke="#ef4444" stroke-width="8"/>
+  <path d="M842 468 H1122" stroke="#f59e0b" stroke-width="8"/>
+  <path d="M448 612 H1148" stroke="#14b8a6" stroke-width="8"/>
+  <path d="M448 648 H1048" stroke="#94a3b8" stroke-width="8"/>
+</svg>

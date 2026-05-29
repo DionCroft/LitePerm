@@ -27,35 +27,39 @@
 - Public downloads, release notes, and citation metadata
 - Deployment-ready documentation workflow for open-source collaboration
 
-## Phase 5
+## Planned
+
+### Phase 5
 
 - Real-time LiteVNA streaming with continuous inverse updates
 - GPU-aware solver acceleration hooks
 - Digital twin synchronisation improvements
 
-## Phase 6
+### Phase 6
 
 - AI-assisted material classification
-- Neural inverse models and surrogate-model training pipeline
-- Physics-informed hybrid model experiments
+- neural inverse models
+- surrogate-model training workflows
+- physics-informed hybrid experiments
 
-## Phase 7
+### Phase 7
 
-- Patch antenna inverse modelling
+- patch antenna inverse modelling refinements
 - openEMS, Meep, HFSS, CST, and COMSOL coupling adapters
 
-## Phase 8
+### Phase 8
 
-- Metamaterial sensor support
+- metamaterial sensor support
 - CSRR and advanced resonator libraries
 
-## Phase 9
+### Phase 9
 
-- Biomedical implant sensor support
-- Passive wireless implant sensing workflows
-- Tissue-model inverse estimation refinement
+- biomedical implant sensor support
+- passive wireless implant sensing workflows
+- tissue-model inverse estimation refinement
 
-## Phase 10
+### Phase 10
 
-- Cloud-based experiment repository
-- Cloud simulation clusters and remote solver orchestration
+- cloud-based experiment repository
+- remote simulation clusters
+- scalable research collaboration tooling

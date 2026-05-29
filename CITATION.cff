@@ -1,0 +1,31 @@
+cff-version: 1.2.0
+title: LitePerm
+message: "If you use LitePerm in research, please cite the software using the metadata below."
+type: software
+authors:
+  - family-names: Croft
+    given-names: Dion
+repository-code: "https://github.com/DionCroft/LitePerm"
+url: "https://github.com/DionCroft/LitePerm"
+license: MIT
+version: 0.4.0
+date-released: 2026-05-29
+abstract: >-
+  LitePerm is an open-source RF sensing, dielectric spectroscopy, and inverse
+  electromagnetic modelling platform for LiteVNA-based research workflows.
+keywords:
+  - dielectric spectroscopy
+  - inverse modelling
+  - LiteVNA
+  - microwave sensing
+  - biomedical sensing
+preferred-citation:
+  type: software
+  authors:
+    - family-names: Croft
+      given-names: Dion
+  title: LitePerm
+  version: 0.4.0
+  date-released: 2026-05-29
+  repository-code: "https://github.com/DionCroft/LitePerm"
+  url: "https://github.com/DionCroft/LitePerm"

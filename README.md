@@ -1,7 +1,7 @@
 # LitePerm
 
 <p align="center">
-  <img src="docs/images/liteperm_logo.png" alt="LitePerm Logo" width="300"/>
+  <img src="docs/images/liteperm_logo.svg" alt="LitePerm Logo" width="360"/>
 </p>
 
 <p align="center">
@@ -28,6 +28,12 @@ The project originated from the need for an accessible and extensible framework 
 * Resonant Behaviour
 
 Unlike traditional VNA software, LitePerm is designed not only to visualise measurements but also to estimate unknown material properties through forward and inverse electromagnetic modelling.
+
+## Website and Documentation
+
+- GitHub Pages documentation portal: `https://dioncroft.github.io/LitePerm/`
+- Browser demo: `https://dioncroft.github.io/LitePerm/web_demo/`
+- Repository: `https://github.com/DionCroft/LitePerm`
 
 The platform provides a foundation for research in:
 

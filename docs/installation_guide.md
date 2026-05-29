@@ -1,44 +1,72 @@
 # Installation Guide
 
-## Requirements
+LitePerm supports Windows, Linux, and WSL2. The fastest route is:
 
-- Python 3.12+
-- Windows, Linux, or WSL2
+1. install Python 3.12+
+2. install Git
+3. clone the repository
+4. create a virtual environment
+5. install dependencies
+6. launch Streamlit
 
-## Setup
+## Choose Your Platform
 
-```bash
+| Platform | Guide |
+| --- | --- |
+| Windows 11 | [Windows 11 Installation](installation_windows_11.md) |
+| Ubuntu | [Ubuntu Installation](installation_ubuntu.md) |
+| WSL2 | [WSL2 Installation](installation_wsl2.md) |
+
+## Core Commands
+
+### Windows PowerShell
+
+```powershell
 python -m venv .venv
-.venv\Scripts\activate
+.\.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-```
-
-On Linux or WSL2:
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-## Run
-
-```bash
 streamlit run app.py
 ```
 
-The sample Touchstone and CSV files in `examples/` are ready for a quick smoke test.
+### Ubuntu / WSL2
 
-## Optional Services
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+streamlit run app.py
+```
 
-API:
+## Optional Components
+
+FastAPI service:
 
 ```bash
 uvicorn liteperm.api.app:create_api_app --factory
 ```
 
-Hardware:
+Documentation tooling:
 
-- Install `pyserial` through `requirements.txt` for direct LiteVNA USB serial support.
-- Use the simulated live device backend if hardware is not currently attached.
+```bash
+pip install -r requirements-docs.txt
+mkdocs serve
+```
 
+## Verification
+
+After installation, confirm that:
+
+- `streamlit run app.py` opens a browser page
+- `examples/sample_touchstone.s1p` imports successfully
+- the Smith chart renders
+- one experiment can be saved
+
+## Common Errors
+
+- Python not on PATH
+- PowerShell activation blocked
+- missing `python3-venv` on Ubuntu
+- serial permission issues on Linux
+- `kaleido` missing when exporting figures
+
+For a complete first-session walkthrough, continue to [Quick Start](QuickStart.md).

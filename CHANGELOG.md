@@ -1,5 +1,14 @@
 # Changelog
 
+## v0.4.0
+
+- Added a full MkDocs Material documentation portal for GitHub Pages
+- Added GitHub Pages deployment automation through `.github/workflows/docs.yml`
+- Added beginner-focused installation guides for Windows 11, Ubuntu, and WSL2
+- Added a browser-only Plotly.js demonstration for Touchstone and CSV visualisation
+- Added browser connectivity investigation notes for Web Serial and WebUSB
+- Added screenshot placeholders, research showcase pages, downloads page, and citation metadata
+
 ## v0.3.0
 
 - Added the Phase 3 inverse electromagnetic modelling engine and Streamlit workflow

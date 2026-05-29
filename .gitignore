@@ -7,6 +7,7 @@ htmlcov/
 venv/
 dist/
 build/
+site/
 *.pyc
 *.pyo
 *.pyd

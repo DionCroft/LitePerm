@@ -1,22 +1,32 @@
-# Patch Antenna Guide
+# Patch Antenna Sensors
 
-Patch antenna sensors can be approximated in LitePerm through an effective capacitance model derived from the patch area and substrate height.
+LitePerm supports patch-antenna research through editable geometry profiles, multilayer stacks, and inverse-modelling tools.
 
-## Parameters
+## Geometry Inputs
 
-- `Length`
-- `Width`
-- `Substrate Height`
-- `Substrate Permittivity`
-- `Feed Position`
-- `Ground Plane Dimensions`
-- `Sensing Region Dimensions`
-- `Protective Layer Thickness`
+- patch length
+- patch width
+- substrate height
+- substrate permittivity
+- feed position
+- ground plane dimensions
+- sensing region dimensions
+- protective layer thickness
 
-## Practical Advice
+## Recommended Workflow
 
-- Use the same geometry profile for all related sweeps in a study.
-- Treat the current permittivity reconstruction as a first-order sensing model unless you have a validated inversion for your resonator.
-- Export both the raw S11 and the dielectric spectrum when documenting experiments.
-- Store the sensor profile in the built-in geometry library if the same patch is reused across multiple experiments.
+1. Save the patch geometry as a reusable profile.
+2. Capture S11 for the baseline and material-loaded states.
+3. Use `Material Properties` for first-look dielectric exploration.
+4. Use `Inverse Modelling` for property estimation and sensitivity ranking.
+5. Save the result in `Research Mode`.
 
+## Research Notes
+
+- Patch sensors are especially sensitive to geometry drift and material thickness assumptions.
+- Keep fabrication dimensions and substrate details in the experiment metadata.
+- Use the same geometry profile for every sweep in a study series.
+
+## Model Scope
+
+The current patch workflow is a research-oriented simplified model, not a full-wave replacement.

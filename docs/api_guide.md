@@ -1,14 +1,14 @@
-# API Guide
+# API Documentation
 
-LitePerm exposes a FastAPI service for integration with external tools.
+LitePerm exposes a FastAPI service for automation, scripting, and future external integrations.
 
-## Start
+## Start the API
 
 ```bash
 uvicorn liteperm.api.app:create_api_app --factory
 ```
 
-## Endpoints
+## Current Endpoint Groups
 
 - `/experiments`
 - `/materials`
@@ -17,5 +17,9 @@ uvicorn liteperm.api.app:create_api_app --factory
 - `/sweeps`
 - `/plugins`
 
-The API layer is intentionally thin in Phase 2 so it can evolve alongside the database and acquisition services.
+## Intended Uses
 
+- connect LitePerm to external lab tooling
+- browse saved experiments programmatically
+- integrate materials and geometry profiles into notebooks
+- prepare future automation around sweeps and archive export

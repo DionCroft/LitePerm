@@ -1,18 +1,34 @@
 # Calibration Guide
 
-LitePerm currently implements a modular one-port Open/Short/Load workflow for S11 correction.
+LitePerm uses a modular one-port Open/Short/Load workflow for S11 correction and profile reuse.
+
+## What You Need
+
+- DUT measurement
+- open standard
+- short standard
+- load standard
+- the same frequency sweep for all four captures
 
 ## Recommended Flow
 
-1. Measure open, short, and load standards using the same frequency sweep as the DUT.
+1. Measure open, short, load, and DUT using identical sweep settings.
 2. Import the DUT in `Raw Measurement`.
-3. Import the three standards in `Calibration`.
-4. Confirm the actual standard reflection coefficients if you use non-ideal standards.
-5. Save the profile as YAML for reuse.
+3. Import the standards in `Calibration`.
+4. Confirm the assumed standard reflection coefficients if you use non-ideal fixtures.
+5. Save the calibration profile as YAML.
+6. Apply the calibration when computing dielectric properties.
 
-## Notes
+## Stored in the Calibration Profile
 
-- The profile YAML stores standard assumptions, reference material selections, and notes.
-- The v0.1.0 calibration engine is intended as a transparent open-source baseline for research workflows.
-- Reference-material support is included for future expansion toward multi-liquid or probe-specific calibration schemes.
+- open, short, and load reflection assumptions
+- reference material names
+- operator notes
+- reusable YAML metadata
 
+## Good Practice
+
+- keep cable routing unchanged between standard and DUT measurements
+- avoid changing start or stop frequency mid-calibration
+- name profiles after the fixture and date
+- save reference notes for future publications
